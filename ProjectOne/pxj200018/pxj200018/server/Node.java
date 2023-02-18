@@ -1,7 +1,6 @@
 package pxj200018.server;
 
 import pxj200018.algorithm.Peleg;
-import pxj200018.algorithm.SynchBFS;
 import pxj200018.config.Config;
 import pxj200018.message.PelegMessage;
 
@@ -100,14 +99,8 @@ public class Node {
         n.startLeaderElection();
 
         log.log(Level.INFO, "Peleg Execution over");
-        // once the leader is elected start BFS algorithm
-//        n.startSynchBFS();
+        Thread.sleep(100000);
     }
-
-    /**
-     * Spawns a thread to run synch bfs algorithm.
-     */
-    private void startSynchBFS() { new Thread(new SynchBFS(this)).start(); }
 
     /**
      * Spawns a thread to run leader election algorithm.
@@ -115,7 +108,7 @@ public class Node {
     private void startLeaderElection() throws InterruptedException {
         Thread pelegThread = new Thread(new Peleg(this));
         pelegThread.start();
-        pelegThread.wait();
+        pelegThread.join();
     }
 
     /**
