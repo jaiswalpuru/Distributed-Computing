@@ -10,21 +10,20 @@ import java.net.Socket;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-public class ClientHandler implements Runnable {
+public class ClientHandlerPeleg implements Runnable {
     Node node;
-    private static final Logger log = Logger.getLogger(String.valueOf(ClientHandler.class));
-    public ClientHandler(Node n) { this.node = n; }
     ServerSocket serverSocket;
+    private static final Logger log = Logger.getLogger(String.valueOf(ClientHandlerPeleg.class));
+    public ClientHandlerPeleg(Node n) { this.node = n; }
     @Override
     public void run() {
         try {
-            // passing numberOfNodes as backlog as there might be at most numberOfNodes-1 connected to a node.
             serverSocket = new ServerSocket(node.getPortNumber(), node.config.getNumberOfNodes());
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
 
-        while(node.isActive) {
+        while(node.isPelegNodeActive) {
             Socket s = null;
             try {
                 s = serverSocket.accept();

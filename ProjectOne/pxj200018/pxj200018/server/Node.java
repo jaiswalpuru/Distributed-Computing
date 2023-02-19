@@ -1,6 +1,7 @@
 package pxj200018.server;
 
 import pxj200018.algorithm.Peleg;
+import pxj200018.algorithm.SynchBFS;
 import pxj200018.config.Config;
 import pxj200018.message.PelegMessage;
 
@@ -18,28 +19,29 @@ public class Node {
     private static final Logger log = Logger.getLogger(String.valueOf(Node.class));
 
     /*-------------------------------------------Peleg's variables-----------------------------------------------------*/
+    int d; // distance.
     int UID; // My UID.
     int UID_X; // max UID seen so far.
-    int d; // distance.
+    int leader; // who is the leader.
     int round; // which round is currently being executed.
-    boolean isActive; // is peleg still running.
     int count; // this is to keep track if for more than two rounds the d doesn't change, then terminate.
     boolean isLeaderFound; // if the leader is found.
-    int leader; // who is the leader.
+    boolean isPelegNodeActive; // is peleg still running.
     public CopyOnWriteArrayList<PelegMessage> pelegMessages; // messages which will be received from neighbors.
 
     /*-------------------------------------------Synch BFS variables--------------------------------------------------*/
-    List<Integer> children; // UID's of the children.
     int parent; // this nodes parent.
     int ackCount; // number of acknowledgement received.
     int childCount; // children count.
-    boolean isMarked; // is the node visited or not.
+    boolean isMarked; // node visited or not.
+    boolean isBFSActive; // if synch bfs is still running.
+    List<Integer> children; // UID's of the children.
 
     /*-------------------------------------------Node variables-----------------------------------------------------*/
-    List<Integer> neighbors;
+    Config config;
     int portNumber;
     String hostName;
-    Config config;
+    List<Integer> neighbors;
 
     /**
      * Constructor
@@ -77,7 +79,7 @@ public class Node {
         this.round = 0;
         this.UID_X = UID;
         this.d = 0;
-        this.isActive = true;
+        this.isPelegNodeActive = true;
         this.count = 0;
         this.isLeaderFound = false;
         this.pelegMessages = new CopyOnWriteArrayList<>();
@@ -87,20 +89,41 @@ public class Node {
         this.childCount = 0;
         this.children = new ArrayList<>();
         this.ackCount = 0;
+        this.isBFSActive = true;
         this.isMarked = false;
+
     }
 
     public static void main(String[] args) throws InterruptedException {
         Node n = new Node();
-        n.handleClient();
 
-        //wait for all the nodes to start
+        n.handlePelegClient();
+        // sleeping assuming all nodes to be active in that time.
         Thread.sleep(10000);
         n.startLeaderElection();
+        log.log(Level.INFO, "\nPeleg Execution over\n");
 
-        log.log(Level.INFO, "Peleg Execution over");
-        Thread.sleep(100000);
+        Thread.sleep(10000);
+
+        //sleeping after peleg to ensure all the nodes have returned.
+        n.handleBFSClient();
+        n.startSynchBFS();
+        log.log(Level.INFO, "\nSynch BFS execution over\n");
     }
+
+    /**
+     * Spawns a thread to run synch bfs algorithm.
+     */
+    private void startSynchBFS() throws InterruptedException {
+        Thread bfsThread = new Thread(new SynchBFS(this));
+        bfsThread.start();
+        bfsThread.join();
+    }
+
+    /**
+     * Spawns a thread to start the socket server to handles neighbors messages
+     */
+    private void handleBFSClient() { new Thread(new ClientHandlerSynchBFS(this)).start(); }
 
     /**
      * Spawns a thread to run leader election algorithm.
@@ -114,16 +137,28 @@ public class Node {
     /**
      * Spawns a thread to start the socket server to handles neighbors messages
      */
-    private void handleClient() { new Thread(new ClientHandler(this)).start(); }
+    private void handlePelegClient() { new Thread(new ClientHandlerPeleg(this)).start(); }
 
     // getters and setters
     public CopyOnWriteArrayList<PelegMessage> getPelegMessages() { return pelegMessages; }
 
-    public String getHostName() { return hostName; }
+    public int getRound() { return this.round; }
+
+    public void setRound(int round) { this.round = round; }
+
+    public Config getConfig() { return config; }
+
+    public int getD() {
+        return d;
+    }
+
+    public void setD(int d) { this.d = d; }
 
     public int getLeader() { return leader; }
 
     public void setLeader(int leader) { this.leader = leader; }
+
+    public String getHostName() { return hostName; }
 
     public boolean isLeaderFound() { return isLeaderFound; }
 
@@ -133,31 +168,20 @@ public class Node {
 
     public void setUID_X(int uid_x) { this.UID_X = uid_x; }
 
-    public int getD() {
-        return d;
-    }
-
-    public void setD(int d) { this.d = d; }
-
-    public Config getConfig() { return config; }
-
-    public List<Integer> getNeighbors() { return neighbors; }
+    public int getUID() { return UID; }
 
     public int getPortNumber() { return portNumber; }
 
-    public int getUID() { return UID; }
+    public boolean isNodeActive() { return this.isPelegNodeActive; }
 
-    public boolean isNodeActive() { return this.isActive; }
-
-    public void setIsNodeActive(boolean flag) { this.isActive = flag; }
-
-    public int getRound() { return this.round; }
-
-    public void setRound(int round) { this.round = round; }
+    public void setIsNodeActive(boolean flag) { this.isPelegNodeActive = flag; }
 
     public int getCount() { return this.count; }
 
     public void setCount(int count) { this.count = count; }
 
-    public String toString() { return "Round : " + this.round + "\nUID : " + this.UID + "\nMaxUID : " + this.UID_X + "\nDis : " + d;  }
+    public List<Integer> getNeighbors() { return neighbors; }
+
+    public String toString() { return "Round : " + this.round + "\nUID : " +
+            this.UID + "\nMaxUID : " + this.UID_X + "\nDis : " + d;  }
 }
