@@ -22,6 +22,6 @@ public class SynchBFS implements Runnable {
      */
     @Override
     public void run() {
-        return;
+        
     }
 }

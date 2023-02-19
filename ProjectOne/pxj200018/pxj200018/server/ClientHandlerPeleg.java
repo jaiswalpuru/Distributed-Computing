@@ -24,36 +24,33 @@ public class ClientHandlerPeleg implements Runnable {
         }
 
         while(node.isPelegNodeActive) {
-            Socket s = null;
+            Socket socket = null;
+
             try {
-                s = serverSocket.accept();
-                ObjectInputStream inputStream = new ObjectInputStream(s.getInputStream());
-                PelegMessage m = (PelegMessage) inputStream.readObject();
-                log.log(Level.INFO, "Received : " + m);
-                node.getPelegMessages().add(m);
+                socket = serverSocket.accept();
+                ObjectInputStream inputStream = new ObjectInputStream(socket.getInputStream());
+                PelegMessage pelegMessage = (PelegMessage) inputStream.readObject();
+                log.log(Level.INFO, "Peleg message received\n" + pelegMessage + "\n");
+                node.getPelegMessages().add(pelegMessage);
 
                 // if is terminated true then send across all the neighbors
-                if (m.isTerminate()) {
+                if (pelegMessage.isTerminate()) {
                     node.setIsNodeActive(false);
-                    node.setLeader(m.getUID_X());
+                    node.setLeader(pelegMessage.getUID_X());
                 }
 
-            } catch (Exception e) {
-                assert  s != null;
-                try {
-                    s.close();
-                }catch (IOException ex) {
-                    throw new RuntimeException();
-                }
-                log.log(Level.SEVERE, "Error in accepting request from machine " + node.hostName);
-                e.printStackTrace();
+                socket.close();
+            } catch (IOException | ClassNotFoundException e) {
+                log.log(Level.SEVERE, "Peleg : error in accepting request from machine " + node.hostName + "\n");
+                throw new RuntimeException(e);
             }
+
         }
 
         try {
             serverSocket.close();
         } catch (IOException e) {
-            log.log(Level.SEVERE, "Error in closing the socket " + node.hostName);
+            log.log(Level.SEVERE, "Pelegs : error in closing the socket " + node.hostName + "\n");
             throw new RuntimeException(e);
         }
     }

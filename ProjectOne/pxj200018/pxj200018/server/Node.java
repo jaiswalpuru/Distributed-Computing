@@ -3,6 +3,7 @@ package pxj200018.server;
 import pxj200018.algorithm.Peleg;
 import pxj200018.algorithm.SynchBFS;
 import pxj200018.config.Config;
+import pxj200018.message.BFSMessage;
 import pxj200018.message.PelegMessage;
 
 import java.net.InetAddress;
@@ -36,6 +37,7 @@ public class Node {
     boolean isMarked; // node visited or not.
     boolean isBFSActive; // if synch bfs is still running.
     List<Integer> children; // UID's of the children.
+    public CopyOnWriteArrayList<BFSMessage> bfsMessages; // message buffer for "search" messages
 
     /*-------------------------------------------Node variables-----------------------------------------------------*/
     Config config;
@@ -91,7 +93,7 @@ public class Node {
         this.ackCount = 0;
         this.isBFSActive = true;
         this.isMarked = false;
-
+        this.bfsMessages = new CopyOnWriteArrayList<>();
     }
 
     public static void main(String[] args) throws InterruptedException {
@@ -101,14 +103,14 @@ public class Node {
         // sleeping assuming all nodes to be active in that time.
         Thread.sleep(10000);
         n.startLeaderElection();
-        log.log(Level.INFO, "\nPeleg Execution over\n");
+        log.log(Level.INFO, "Peleg Execution over\n");
 
         Thread.sleep(10000);
 
         //sleeping after peleg to ensure all the nodes have returned.
         n.handleBFSClient();
         n.startSynchBFS();
-        log.log(Level.INFO, "\nSynch BFS execution over\n");
+        log.log(Level.INFO, "Synch BFS execution over\n");
     }
 
     /**
@@ -135,7 +137,7 @@ public class Node {
     }
 
     /**
-     * Spawns a thread to start the socket server to handles neighbors messages
+     * Spawns a thread to start the socket server to handle neighbors messages
      */
     private void handlePelegClient() { new Thread(new ClientHandlerPeleg(this)).start(); }
 

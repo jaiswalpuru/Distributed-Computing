@@ -1,7 +1,11 @@
 package pxj200018.server;
 
+import pxj200018.message.BFSMessage;
+
 import java.io.IOException;
+import java.io.ObjectInputStream;
 import java.net.ServerSocket;
+import java.net.Socket;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -31,9 +35,30 @@ public class ClientHandlerSynchBFS implements Runnable {
         }catch (IOException e) {
             throw new RuntimeException(e);
         }
+
         log.log(Level.INFO, "\nStarting Synch BFS\n");
         while(node.isBFSActive) {
-            return;
+            Socket socket = null;
+
+            try {
+                socket = serverSocket.accept();
+                ObjectInputStream inputStream = new ObjectInputStream(socket.getInputStream());
+                BFSMessage bfsMessage = (BFSMessage) inputStream.readObject();
+                log.log(Level.INFO, "Synch BFS Message received\n" + bfsMessage + "\n");
+                node.bfsMessages.add(bfsMessage);
+                socket.close();
+            } catch (IOException | ClassNotFoundException e) {
+                log.log(Level.SEVERE, "Synch BFS : error in accepting request from machine " + node.hostName + "\n");
+                throw new RuntimeException(e);
+            }
+
+        }
+
+        try {
+            serverSocket.close();
+        } catch (IOException e) {
+            log.log(Level.SEVERE, "Synch BFS : error in closing the socket " + node.hostName + "\n");
+            throw new RuntimeException(e);
         }
     }
 }

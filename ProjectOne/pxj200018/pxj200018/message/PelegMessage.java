@@ -18,6 +18,7 @@ public class PelegMessage implements Serializable {
         this.terminate = terminate;
     }
 
+    @Override
     public String toString() {
         return "Round : " + round + "\nUID_X : "  + UID_X + "\nd : " + dMax + "\nParentUID : " +
                 parentUID + "\nisTerminated : " + terminate + "\n";
