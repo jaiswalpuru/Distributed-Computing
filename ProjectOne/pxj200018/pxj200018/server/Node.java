@@ -9,6 +9,7 @@ import pxj200018.message.PelegMessage;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.logging.Level;
@@ -31,13 +32,15 @@ public class Node {
     public CopyOnWriteArrayList<PelegMessage> pelegMessages; // messages which will be received from neighbors.
 
     /*-------------------------------------------Synch BFS variables--------------------------------------------------*/
-    int parent; // this nodes parent.
-    int ackCount; // number of acknowledgement received.
+    Integer parent; // this nodes parent.
     int childCount; // children count.
-    boolean isMarked; // node visited or not.
-    boolean isBFSActive; // if synch bfs is still running.
-    List<Integer> children; // UID's of the children.
+    boolean visited; // node visited or not.
+    boolean searchSent; // to check if search is sent or not.
+    boolean isBFSNodeActive; // if synch bfs is still running.
+    HashSet<Integer> children; // UID's of the children.
     public CopyOnWriteArrayList<BFSMessage> bfsMessages; // message buffer for "search" messages
+    public CopyOnWriteArrayList<BFSMessage> ackMessages; // ack received will be stores in here.
+    public CopyOnWriteArrayList<BFSMessage> nackMessages; // nack received will be stored in here.
 
     /*-------------------------------------------Node variables-----------------------------------------------------*/
     Config config;
@@ -87,13 +90,14 @@ public class Node {
         this.pelegMessages = new CopyOnWriteArrayList<>();
 
         // bfs
-        this.parent = -1;
+        this.parent = null;
         this.childCount = 0;
-        this.children = new ArrayList<>();
-        this.ackCount = 0;
-        this.isBFSActive = true;
-        this.isMarked = false;
+        this.children = new HashSet<>();
+        this.isBFSNodeActive = true;
+        this.visited = false;
         this.bfsMessages = new CopyOnWriteArrayList<>();
+        this.nackMessages = new CopyOnWriteArrayList<>();
+        this.ackMessages = new CopyOnWriteArrayList<>();
     }
 
     public static void main(String[] args) throws InterruptedException {
@@ -105,7 +109,8 @@ public class Node {
         n.startLeaderElection();
         log.log(Level.INFO, "Peleg Execution over\n");
 
-        Thread.sleep(10000);
+        if (n.leader == n.UID) Thread.sleep(10000);
+        Thread.sleep(5000);
 
         //sleeping after peleg to ensure all the nodes have returned.
         n.handleBFSClient();
@@ -143,6 +148,53 @@ public class Node {
 
     // getters and setters
     public CopyOnWriteArrayList<PelegMessage> getPelegMessages() { return pelegMessages; }
+
+    public CopyOnWriteArrayList<BFSMessage> getBfsMessages() { return bfsMessages; }
+
+    public HashSet<Integer> getChildren() {
+        return children;
+    }
+
+    public void updateChildren(int UID) {
+        if (!children.contains(UID)) {
+            childCount++;
+            children.add(UID);
+        }
+    }
+
+    public int getChildCount() { return childCount; }
+
+    public void setSearchSent(boolean searchSent) {
+        this.searchSent = searchSent;
+    }
+
+    public boolean isSearchSent() {
+        return searchSent;
+    }
+
+    public int getParent() {
+        return parent;
+    }
+
+    public void setParent(int parent) {
+        this.parent = parent;
+    }
+
+    public boolean isVisited() {
+        return visited;
+    }
+
+    public void setVisited(boolean visited) {
+        this.visited = visited;
+    }
+
+    public boolean isBFSNodeActive() {
+        return isBFSNodeActive;
+    }
+
+    public void setBFSNodeActive(boolean BFSNodeActive) {
+        isBFSNodeActive = BFSNodeActive;
+    }
 
     public int getRound() { return this.round; }
 
