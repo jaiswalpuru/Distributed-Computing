@@ -59,9 +59,10 @@ public class SynchBFS implements Runnable {
 
                     log.log(Level.INFO, "\n BFS terminated at node : " + node.getUID() + ", parent : " + node.getParent());
                     log.log(Level.INFO, "\n Total Children : " + node.getChildren());
+                    int totalDegree = 1+node.getChildren().size();
 
                     if (parentUID != -1) {
-                        log.log(Level.INFO, "UID : " + node.getUID() + " Degree : " + 1+node.getChildCount() + "\n\n");
+                        log.log(Level.INFO, "UID : " + node.getUID() + " Degree : " + totalDegree + "\n\n");
                         sendAck();
                     } else {
                         log.log(Level.INFO, "UID : " + node.getUID() + " Degree : " + node.getChildren().size() + "\n\n");

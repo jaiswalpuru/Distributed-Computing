@@ -33,7 +33,6 @@ public class Node {
 
     /*-------------------------------------------Synch BFS variables--------------------------------------------------*/
     Integer parent; // this nodes parent.
-    int childCount; // children count.
     boolean visited; // node visited or not.
     boolean searchSent; // to check if search is sent or not.
     boolean isBFSNodeActive; // if synch bfs is still running.
@@ -91,7 +90,6 @@ public class Node {
 
         // bfs
         this.parent = null;
-        this.childCount = 0;
         this.children = new HashSet<>();
         this.isBFSNodeActive = true;
         this.visited = false;
@@ -156,13 +154,8 @@ public class Node {
     }
 
     public void updateChildren(int UID) {
-        if (!children.contains(UID)) {
-            childCount++;
-            children.add(UID);
-        }
+        children.add(UID);
     }
-
-    public int getChildCount() { return childCount; }
 
     public void setSearchSent(boolean searchSent) {
         this.searchSent = searchSent;

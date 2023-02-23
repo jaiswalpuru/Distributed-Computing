@@ -39,7 +39,7 @@ public class ClientHandlerSynchBFS implements Runnable {
 
         log.log(Level.INFO, "\nStarting Synch BFS\n");
         while(node.isBFSNodeActive()) {
-            Socket socket = null;
+            Socket socket;
 
             try {
                 socket = serverSocket.accept();

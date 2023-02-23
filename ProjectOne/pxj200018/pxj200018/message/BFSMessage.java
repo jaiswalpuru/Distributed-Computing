@@ -16,8 +16,6 @@ public class BFSMessage implements Serializable {
 
     public MessageType getMessageType() { return messageType; }
 
-    public void setMessageType(MessageType messageType) { this.messageType = messageType; }
-
     @Override
     public String toString() {
         return "UID : " + UID + "\nMessageType : " + messageType.toString() + "\n" ;

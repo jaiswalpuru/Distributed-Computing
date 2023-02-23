@@ -24,7 +24,7 @@ public class ClientHandlerPeleg implements Runnable {
         }
 
         while(node.isPelegNodeActive) {
-            Socket socket = null;
+            Socket socket;
 
             try {
                 socket = serverSocket.accept();
