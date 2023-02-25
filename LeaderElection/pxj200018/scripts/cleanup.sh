@@ -1,16 +1,13 @@
 #!/bin/bash
 
-
 # Change this to your netid
-netid=sxg122830
+netid=pxj200018
 
-#
 # Root directory of your project
-PROJDIR=$HOME/TestProj
+PROJDIR=/home/010/p/px/pxj200018/pxj200018
 
-#
 # Directory where the config file is located on your local system
-CONFIGLOCAL=$HOME/launch/config.txt
+CONFIGLOCAL=$HOME/Desktop/code/UTD\ Course\ Work/Distributed\ Systems\ CS\ 6380/Projects/LeaderElection/pxj200018/pxj200018/launch/config.txt
 
 n=0
 
@@ -27,7 +24,10 @@ cat "$CONFIGLOCAL" | sed -e "s/#.*//" | sed -e "/^\s*$/d" |
         host=$( echo $line | awk '{ print $2 }' )
 
         echo "$host"
-        gnome-terminal -e "ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no $netid@$host killall -u $netid" &
+        osascript -e '
+                tell app "Terminal"
+                    do script "ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no '$netid@$host'  killall -u '$netid'"
+                end tell'
         sleep 1
 
         n=$(( n + 1 ))

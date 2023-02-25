@@ -4,16 +4,16 @@
 netid=pxj200018
 
 # Root directory of your project
-PROJDIR=/people/cs/s/sxg122830/TestProj
+PROJDIR=pxj200018/server/Node
 
 # Directory where the config file is located on your local system
-CONFIGLOCAL=$HOME/launch/config.txt
+CONFIGLOCAL=$HOME/Desktop/code/UTD\ Course\ Work/Distributed\ Systems\ CS\ 6380/Projects/LeaderElection/pxj200018/pxj200018/launch/config.txt
 
 # Directory your java classes are in
-BINDIR=$PROJDIR/bin
+# BINDIR=$PROJDIR/bin/pxj200018
 
 # Your main project class
-PROG=HelloWorld
+# PROG=Node
 
 n=0
 
@@ -30,7 +30,10 @@ cat "$CONFIGLOCAL" | sed -e "s/#.*//" | sed -e "/^\s*$/d" |
     	p=$( echo $line | awk '{ print $1 }' )
         host=$( echo "$line" | awk '{ print $2 }' )
 	
-	gnome-terminal -e "ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no $netid@$host java -cp $BINDIR $PROG $p; exec bash" &
+    osascript -e '
+                tell app "Terminal"
+                    do script "ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no '$netid@$host'  'java' '$PROJDIR';"
+                end tell'
 
         n=$(( n + 1 ))
     done
