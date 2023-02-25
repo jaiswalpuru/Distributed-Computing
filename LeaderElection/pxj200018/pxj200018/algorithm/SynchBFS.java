@@ -102,27 +102,6 @@ public class SynchBFS implements Runnable {
     }
 
     /**
-     * Sends acknowledgement to the parent.
-     */
-    public void sendAck() {
-        int parentUID = node.getParent();
-        try  {
-            String hostName = config.getHostName(parentUID);
-            int portNumber = config.getMyPortNumber(hostName);
-            Socket socket = new Socket(hostName, portNumber);
-
-            ObjectOutputStream objectOutputStream = new ObjectOutputStream(socket.getOutputStream());
-            objectOutputStream.writeObject(new BFSMessage(node.getUID(), MessageType.ACK));
-
-            log.log(Level.SEVERE, "UID : " + node.getUID() + ", ack sent to UID : " + parentUID+"\n\n");
-            socket.close();
-        } catch (IOException e) {
-            log.log(Level.SEVERE, "UID : " + node.getUID() + ", error in sending ack to " + parentUID + "\n\n");
-        }
-
-    }
-
-    /**
      * Sends search to all its neighbor.
      */
     public void sendSearch() {
@@ -145,6 +124,27 @@ public class SynchBFS implements Runnable {
                 log.log(Level.SEVERE, "UID : " + node.getUID() + ", failed in sending search to " + neighbor + "\n\n");
             }
         }
+    }
+
+    /**
+     * Sends acknowledgement to the parent.
+     */
+    public void sendAck() {
+        int parentUID = node.getParent();
+        try  {
+            String hostName = config.getHostName(parentUID);
+            int portNumber = config.getMyPortNumber(hostName);
+            Socket socket = new Socket(hostName, portNumber);
+
+            ObjectOutputStream objectOutputStream = new ObjectOutputStream(socket.getOutputStream());
+            objectOutputStream.writeObject(new BFSMessage(node.getUID(), MessageType.ACK));
+
+            log.log(Level.SEVERE, "UID : " + node.getUID() + ", ack sent to UID : " + parentUID+"\n\n");
+            socket.close();
+        } catch (IOException e) {
+            log.log(Level.SEVERE, "UID : " + node.getUID() + ", error in sending ack to " + parentUID + "\n\n");
+        }
+
     }
 
     /**
