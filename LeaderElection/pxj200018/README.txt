@@ -27,7 +27,7 @@ BFSMessage.class MessageType.class PelegMessage.class
 ./server:
 ClientHandlerPeleg.class 	ClientHandlerSynchBFS.class	Node.class
 
-Now if one wants to change the graph topology then replace the config.txt with the same format as provided in the project desscription,
-if the format is provided as given the project, the execution might have problems.
+Now if one wants to change the graph topology then replace the config.txt with the same format as provided in the project description,
+if the format is not provided as given the project, the execution might have problems.
 
 The launcher.sh file if programmed to open terminals in MACOS operating system.
