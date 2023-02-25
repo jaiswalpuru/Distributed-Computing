@@ -40,7 +40,7 @@ public class Peleg implements Runnable {
                 if (check()) { // this is basically a synch technique
                     log.log(Level.INFO, "Round : " + node.getRound());
 
-                    PelegMessage maxMessage = getMaxUIDMessage();
+                    PelegMessage maxMessage = findMaxUIDMessage();
                     log.log(Level.INFO, "Max UID seen so far : "  + maxMessage);
                     if (maxMessage.getUID_X() > node.getUID_X()) {
                         node.setUID_X(maxMessage.getUID_X());
@@ -117,7 +117,7 @@ public class Peleg implements Runnable {
     }
 
     // get the maximum UID from its neighbors
-    PelegMessage getMaxUIDMessage() {
+    PelegMessage findMaxUIDMessage() {
         List<PelegMessage> messageBuffer = Collections.synchronizedList(node.pelegMessages);
         synchronized (messageBuffer) {
             PelegMessage maxUIDMessage = null;
@@ -139,17 +139,20 @@ public class Peleg implements Runnable {
 
             assert maxUIDMessage != null;
             log.log(Level.INFO, maxUIDMessage.toString());
-
-            //remove all the messages which have UID < maxUID
-            for (PelegMessage curr : messageBuffer) {
-                if (curr.getRound() == node.getRound()-1) {
-                    if (curr.getUID_X() < maxUIDMessage.getUID_X()) { // if curr UID is smaller remove
-                        log.log(Level.INFO, curr + " removed from list\n");
-                        node.pelegMessages.remove(curr);
-                    }
-                }
-            }
+            clearBuffer(maxUIDMessage);
             return maxUIDMessage;
+        }
+    }
+
+    /**
+     * Remove the message from the node buffer whose UID is lesser than the maxUID.
+     */
+    private void clearBuffer(PelegMessage maxUIDMessage) {
+        List<PelegMessage> buffer = Collections.synchronizedList(node.getPelegMessages());
+        for (PelegMessage curr : buffer) {
+            if (curr.getRound() == node.getRound()-1 && curr.getUID_X() < maxUIDMessage.getUID_X()) {
+                node.pelegMessages.remove(curr);
+            }
         }
     }
 
