@@ -31,7 +31,7 @@ public class Config {
     public void readFile() {
         int i = 1, j = 1;
         try {
-            File fp = new File("pxj200018/config/config.txt");
+            File fp = new File("pxj200018/launch/config.txt");
             Scanner sc = new Scanner(fp);
 
             while (sc.hasNextLine()) {
