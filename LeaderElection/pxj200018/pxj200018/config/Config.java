@@ -39,7 +39,7 @@ public class Config {
 
                 if (line.charAt(0) == '#') continue;
                 
-                if (line.length() == 1 && numberOfNodes == 0) {
+                if (numberOfNodes == 0) {
                     numberOfNodes = Integer.parseInt(line);
                 } else {
                     String[] values = line.split(" ");
@@ -91,4 +91,11 @@ public class Config {
     }
 
     public String getHostName(Integer UID) {  return uidToHost.get(UID); }
+
+    // this is for testing
+    public static void main(String[] args) {
+        Config c = new Config();
+        c.readFile();
+        System.out.println(c.graph);
+    }
 }
