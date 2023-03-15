@@ -5,26 +5,16 @@
 # a comment and should be ignored by the parser.
 #
 # Number of nodes
-7
+3
 # Here we list the individual nodes
 #
 # Format is:
 # UID Hostname Port
-5 dc02.utdallas.edu 5234
-200 dc03.utdallas.edu 6213
-8 dc04.utdallas.edu 4223
-184 dc05.utdallas.edu 3262
-9 dc02.utdallas.edu 4293
-37 dc07.utdallas.edu 7245
-78 dc08.utdallas.edu 9286
+37 dc17.utdallas.edu 9981
+78 dc18.utdallas.edu 9982
+123 dc19.utdallas.edu 9988
 # List of edges and their weight, one per line. An edge is denoted
 # by (smaller uid, larger uid)
-(5,200) 5
-(5,8) 3
-(5,37) 10
-(8,184) 1
-(8,78) 3
-(184,200) 3
 (37,78) 1
-(9,78) 2
-(9,200) 5
+(37,123) 2
+(78,123) 3

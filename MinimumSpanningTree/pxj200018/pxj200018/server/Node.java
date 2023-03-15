@@ -1,13 +1,15 @@
 package pxj200018.server;
 
-import javafx.util.Pair;
 import pxj200018.algorithm.SynchGHS;
 import pxj200018.config.Config;
+import pxj200018.message.Edge;
+import pxj200018.message.EdgeType;
 import pxj200018.message.GHSMessage;
 
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.logging.Level;
@@ -20,9 +22,16 @@ public class Node {
 
     /*-------------------------------------------Synch GHS variables-----------------------------------------------------*/
     int UID; // My UID.
+    int srcUID;
     int leader; // who is the leader.
+    int mstEdgeCount;
+    int normalEdgeCount;
     Boolean isActive;
     Boolean isFirstMessage;
+
+    Boolean isFirstConverge;
+    public HashMap<Integer, Edge> neighborsMinEdge; // <srcUID, minEdge>
+    public HashMap<Integer, Integer> neighborLeader; // <srcUID,leaderUID>
     public CopyOnWriteArrayList<GHSMessage> ghsMessages; // messages which will be received from neighbors.
     /*-------------------------------------------Synch GHS variables-----------------------------------------------------*/
 
@@ -30,7 +39,7 @@ public class Node {
     Config config;
     int portNumber;
     String hostName;
-    List<Pair<Integer, Integer>> neighbors;
+    List<Edge> neighbors;
 
     /**
      * Constructor
@@ -47,17 +56,7 @@ public class Node {
         } catch (UnknownHostException e) {
             throw new RuntimeException(e);
         }
-
         hostName = ip.getHostName();
-        System.out.println(hostName);
-
-        // this is just for testing
-        if (hostName.equals("Purus-MacBook-Pro") || hostName.equals("Purus-MBP")) {
-            portNumber = 8000;
-            UID = -1;
-            neighbors = null;
-            return;
-        } // to deleted in the future.
 
         // node details
         portNumber = config.getMyPortNumber(hostName);
@@ -65,9 +64,15 @@ public class Node {
         neighbors = config.getNeighbors(UID);
 
         //ghs
-        isActive = true;
-        isFirstMessage = true;
+        srcUID = -1;
         leader = UID;
+        isActive = true;
+        mstEdgeCount = 0;
+        isFirstMessage = true;
+        isFirstConverge = true;
+        neighborLeader = new HashMap<>();
+        normalEdgeCount = neighbors.size();
+        neighborsMinEdge = new HashMap<>();
         ghsMessages = new CopyOnWriteArrayList<>();
     }
 
@@ -75,16 +80,45 @@ public class Node {
         Node n = new Node();
 
         n.handleGHSClient();
+        //sleeping for some time to wait for all the nodes to be active by that time.
+        Thread.sleep(10000);
+        log.log(Level.INFO, " socket client listening at port : " + n.portNumber);
+
         n.startSynchGHS();
-        // sleeping assuming all nodes to be active in that time.
-        Thread.sleep(5000);
         log.log(Level.INFO, "SynchGHS Execution over\n");
     }
 
+    /**
+     * Spawn a thread to start the Synch GHS algorithm.
+     */
     public void startSynchGHS() throws InterruptedException {
         Thread t = new Thread(new SynchGHS(this));
         t.start();
         t.join();
+    }
+
+    /**
+     * To update my neighbors edge type.
+     * @param srcUID uid of the source vertex whose graph need to be updated.
+     */
+    public void updateMyGraph(int srcUID) {
+        for (Edge e : neighbors) {
+            if (e.getToVertex() == srcUID) {
+                e.setType(EdgeType.SAME_COMPONENT);
+            }
+        }
+    }
+
+    /**
+     * To get the edge which matches the to vertex.
+     * @param srcUID uid for which
+     * @return Edge from which the current node is connected.
+     */
+    public Edge getEdge(int srcUID){
+        for (Edge e: neighbors){
+            if(e.getToVertex() == srcUID)   return e;
+        }
+        return null;
     }
 
     /**
@@ -95,10 +129,58 @@ public class Node {
     // getters and setters
     public CopyOnWriteArrayList<GHSMessage> getSynchGHSMessages() { return ghsMessages; }
 
+    public Boolean getFirstConverge() {
+        return isFirstConverge;
+    }
+
+    public void setFirstConverge(Boolean firstConverge) {
+        isFirstConverge = firstConverge;
+    }
+
     public Config getConfig() { return config; }
 
     public Boolean getActive() {
         return isActive;
+    }
+
+    public int getNormalEdgeCount() {
+        return normalEdgeCount;
+    }
+
+    public void setNormalEdgeCount(int normalEdgeCount) {
+        this.normalEdgeCount = normalEdgeCount;
+    }
+
+    public void setMstEdge(int mstEdgeCount) {
+        this.mstEdgeCount = mstEdgeCount;
+    }
+
+    public int getMstEdgeCount() {
+        return mstEdgeCount;
+    }
+
+    public HashMap<Integer, Edge> getNeighborsMinEdge() {
+        return neighborsMinEdge;
+    }
+
+    public void updateMinEdge(int srcUID, Edge minEdge) {
+        neighborsMinEdge.putIfAbsent(srcUID, minEdge);
+    }
+
+    public void updateNeighborLeader(int vertex, int leader) {
+        neighborLeader.putIfAbsent(vertex, leader);
+    }
+
+    public int getSrcUID() {
+        return srcUID;
+    }
+
+    public void setSrcUID(int srcUID) {
+        this.srcUID = srcUID;
+    }
+
+    public void setUID(int UID) {
+        this.UID = UID;
     }
 
     public void setActive(Boolean active) {
@@ -123,6 +205,6 @@ public class Node {
 
     public int getPortNumber() { return portNumber; }
 
-    public List<Pair<Integer, Integer>> getNeighbors() { return neighbors; }
+    public List<Edge> getNeighbors() { return neighbors; }
 
 }
