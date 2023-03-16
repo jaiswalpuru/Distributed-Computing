@@ -1,5 +1,6 @@
 package pxj200018.algorithm;
 
+import javafx.util.Pair;
 import pxj200018.config.Config;
 import pxj200018.message.Edge;
 import pxj200018.message.EdgeType;
@@ -10,6 +11,7 @@ import pxj200018.server.Node;
 import java.io.IOException;
 import java.io.ObjectOutputStream;
 import java.net.Socket;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -44,13 +46,16 @@ public class SynchGHS implements Runnable {
                 node.setFirstMessage(false);
                 broadcast();
             }
-            processMessages();
+            try {
+                processMessages();
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
         }
     }
 
-    public synchronized void processMessages() {
+    public synchronized void processMessages() throws InterruptedException {
         List<GHSMessage> ghsMessages = Collections.synchronizedList(node.getSynchGHSMessages());
-
         for (GHSMessage ghsMessage : ghsMessages) {
             if (ghsMessage.isMessageProcessed()) continue;
             ghsMessage.setMessageProcessed(true);
@@ -73,13 +78,89 @@ public class SynchGHS implements Runnable {
                     node.updateNeighborLeader(ghsMessage.getSourceUID(), ghsMessage.getLeaderUID());
                     convergeCast();
                     break;
+                case START_MERGE:
+                    startMerge(ghsMessage);
+                    break;
+                case INFORM_LEADER:
+                    if (node.getSrcUID() != -1)
+                        sendMessage(node.getUID(), node.getSrcUID(), node.getLeader(), MessageType.INFORM_LEADER, null);
+                    else{
+                        broadcastLeader();
+                        // to be checked.
+                        //iterate through all edges adn check if all the messages in array are marked then don't do anything.
+                        Thread.sleep(10000);
+                        if (checkAllMessages(ghsMessages)) {
+                            processTerminate();
+                        }
+                    }
+                    break;
+                case LEADER_BROADCAST:
+                    if (node.getLeader() <= ghsMessage.getLeaderUID()) {
+                        node.setLeader(ghsMessage.getLeaderUID());
+                        node.setSrcUID(ghsMessage.getSourceUID());
+                        broadcastLeader();
+                    }
+                    break;
+                case TERMINATE:
+                    processTerminate();
+                    break;
                 default:
                     break;
             }
         }
     }
 
-    //broadcast to MST edges only
+    /**
+     * To check whether all the messages have been processed or not
+     * @param m list of all the messages in buffer
+     * @return true if all the messages have been processed.
+     */
+    public boolean checkAllMessages(List<GHSMessage> m) {
+        for (GHSMessage msg : m) {
+            if (!msg.isMessageProcessed()) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /**
+     * Starts the merge operation with the edge given in message
+     * @param msg contains the min edge vertex
+     */
+    public void startMerge(GHSMessage msg) {
+        node.updateMyGraph(msg.getSourceUID(), EdgeType.MST_EDGE);
+        //check whose leader wins
+        if (node.getLeader() < msg.getLeaderUID()) {
+            //Current node lost
+            node.setLeader(msg.getLeaderUID());
+            sendMessage(node.getUID(), msg.getSourceUID(), node.getLeader(), MessageType.INFORM_LEADER, null);
+        } else {
+            //Current node winner
+            if (node.getSrcUID() != -1)
+                sendMessage(node.getUID(), node.getSrcUID(), node.getLeader(), MessageType.INFORM_LEADER, null);
+            else {
+                if (msg.getLeaderUID() == node.getLeader()) {
+                    broadcastLeader();
+                }
+            }
+        }
+    }
+
+    /**
+     * Broadcasts who is the leader.
+     */
+    public void broadcastLeader() {
+        List<Edge> neighbors = node.getNeighbors();
+        for (Edge nei : neighbors) {
+            if (nei.getToVertex() == node.getSrcUID() || nei.getType() != EdgeType.MST_EDGE) continue;
+            sendMessage(nei.getFromVertex(), nei.getToVertex(), node.getLeader(), MessageType.LEADER_BROADCAST, null);
+        }
+    }
+
+    /**
+     * Function to broadcast message to everyone.
+     */
     public void broadcast() {
         boolean isLeafNode = true;
         List<Edge> neighbors = Collections.synchronizedList(node.getNeighbors());
@@ -119,12 +200,12 @@ public class SynchGHS implements Runnable {
         for (Integer srcUID : neighborsLeader.keySet()) {
             int neighLeader = neighborsLeader.get(srcUID);
             if (neighLeader == node.getLeader()) {
-                node.updateMyGraph(srcUID); // update the vertex which belong to the same component.
+                node.updateMyGraph(srcUID, EdgeType.SAME_COMPONENT); // update the vertex which belong to the same component.
             } else {
                 Edge neiEdge = node.getEdge(srcUID);
                 if(currMinEdge == null) currMinEdge = neiEdge;
                 else{
-                    if(neiEdge.compare(neiEdge, currMinEdge)){
+                    if(neiEdge.compare(currMinEdge)){
                         currMinEdge = neiEdge;
                     }
                 }
@@ -136,21 +217,79 @@ public class SynchGHS implements Runnable {
             Edge e = neighborsMinEdge.get(srcUID);
             if (currMinEdge == null) currMinEdge = e;
             else {
-                if (e.compare(e, currMinEdge)) {
+                if (e.compare(currMinEdge)) {
                     currMinEdge = e;
                 }
             }
         }
 
         log.log(Level.INFO, "Current minimum edge on UID : " + node.getUID() + " = " + currMinEdge + "\n");
-
+        log.log(Level.INFO, "Neighbors min edges map <neighbor, minEdge> : " + node.getNeighborsMinEdge()+"\n");
+        log.log(Level.INFO, "Neighbors leader <neighbor, leader> : "  + node.neighborLeader);
         // send message of converge cast only if I am not the leader else need to broadcast
         // the minimum edge
         if(node.getSrcUID() == -1) {
             //Send Merge Message
             log.log(Level.INFO, " I am the leader UID : " + node.getUID() + "\n");
+            if(currMinEdge == null) processTerminate();
+            else merge(currMinEdge);
         } else {
             sendMessage(node.getUID(), node.getSrcUID(), node.getLeader(), MessageType.CONVERGE_CAST, currMinEdge);
+        }
+    }
+
+    /**
+     * Sends termination signal to MST edges.
+     */
+    public void processTerminate() {
+        log.log(Level.INFO,  "Terminating : "+ node.getUID() + "\n");
+        node.setActive(false);
+        List<Edge> neighbor = node.getNeighbors();
+        log.log(Level.INFO, "\nCurrent UID: " + node.getUID());
+        for (Edge nei : neighbor) {
+            if (nei.getType() == EdgeType.MST_EDGE) {
+                log.log(Level.INFO,  "MST edge : " + nei + "\n");
+                sendMessage(node.getUID(), nei.getToVertex(), node.getLeader(), MessageType.TERMINATE, null);
+            }
+        }
+    }
+
+    /**
+     * Merges with the minimum edge.
+     * Update source min edge from two hashmaps, neighborsMinEdge and srcMinEdge
+     * @param currMinEdge the edge which needs to be merged
+     */
+    public void merge(Edge currMinEdge) {
+        List<Pair<Integer, Edge>> srcMinEdge = new ArrayList<>();
+        HashMap<Integer, Edge> neighborsMinEdge = node.getNeighborsMinEdge();
+        for (Integer nei : neighborsMinEdge.keySet()) {
+            Edge edge = neighborsMinEdge.get(nei);
+            if (edge.getEdgeWt() == currMinEdge.getEdgeWt()) {
+                //propagate the message to from vertex
+                srcMinEdge.add(new Pair<>(nei, edge));
+            }
+        }
+
+        for (Edge nei : node.getNeighbors()) {
+            if (nei.getType() == EdgeType.NORMAL_EDGE && nei.getEdgeWt() == currMinEdge.getEdgeWt()) {
+                srcMinEdge.add(new Pair<>(nei.getToVertex(), nei));
+            }
+        }
+
+        // lexicographical comparison
+        Pair<Integer, Edge>  minEdge = srcMinEdge.get(0);
+        for (int i = 1; i<srcMinEdge.size(); i++) {
+            if (!minEdge.getValue().compare(srcMinEdge.get(i).getValue())) {
+                minEdge = srcMinEdge.get(i);
+            }
+        }
+
+        Edge e = node.getEdge(minEdge.getKey());
+        if (e.getType() == EdgeType.MST_EDGE) {
+            sendMessage(e.getFromVertex(), e.getToVertex(), node.getLeader(), MessageType.MERGE, null);
+        } else {
+            node.updateMyGraph(e.getToVertex(), EdgeType.MST_EDGE);
+            sendMessage(e.getFromVertex(), e.getToVertex(), node.getLeader(), MessageType.START_MERGE, null);
         }
     }
 

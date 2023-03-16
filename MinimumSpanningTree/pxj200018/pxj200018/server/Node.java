@@ -101,10 +101,11 @@ public class Node {
      * To update my neighbors edge type.
      * @param srcUID uid of the source vertex whose graph need to be updated.
      */
-    public void updateMyGraph(int srcUID) {
+    public void updateMyGraph(int srcUID, EdgeType type) {
         for (Edge e : neighbors) {
             if (e.getToVertex() == srcUID) {
-                e.setType(EdgeType.SAME_COMPONENT);
+                setNormalEdgeCount(getNormalEdgeCount()-1);
+                e.setType(type);
             }
         }
     }
