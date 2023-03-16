@@ -1,15 +1,16 @@
 package pxj200018.message;
 
 public enum MessageType {
+    NULL,
     MERGE,
+    END_MERGE,
     TERMINATE,
     BROADCAST,
     GET_LEADER, //testing,
-    SEND_LEADER,
-    CONVERGE_CAST,
-    LEADER_BROADCAST,
     START_MERGE,
-    END_MERGE,
+    SEND_LEADER,
+    INFORM_LEADER, // termination,
     UPDATE_LEADER,
-    NULL, INFORM_LEADER; // termination
+    CONVERGE_CAST,
+    LEADER_BROADCAST;
 }
