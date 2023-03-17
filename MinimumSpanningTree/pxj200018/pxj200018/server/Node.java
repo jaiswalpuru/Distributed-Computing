@@ -22,7 +22,9 @@ public class Node {
 
     /*-------------------------------------------Synch GHS variables-----------------------------------------------------*/
     int UID; // My UID.
+    int level;
     int srcUID;
+    boolean isConvergeDone;
     int leader; // who is the leader.
     int mstEdgeCount;
     int normalEdgeCount;
@@ -67,6 +69,7 @@ public class Node {
         srcUID = -1;
         leader = UID;
         isActive = true;
+        isConvergeDone = false;
         mstEdgeCount = 0;
         isFirstMessage = true;
         isFirstConverge = true;
@@ -102,6 +105,8 @@ public class Node {
      * @param srcUID uid of the source vertex whose graph need to be updated.
      */
     public void updateMyGraph(int srcUID, EdgeType type) {
+        if (type == EdgeType.MST_EDGE) setMstEdgeCount(getMstEdgeCount()+1);
+
         for (Edge e : neighbors) {
             if (e.getToVertex() == srcUID) {
                 setNormalEdgeCount(getNormalEdgeCount()-1);
@@ -130,6 +135,22 @@ public class Node {
     // getters and setters
     public CopyOnWriteArrayList<GHSMessage> getSynchGHSMessages() { return ghsMessages; }
 
+    public void setConvergeDone(boolean convergeDone) {
+        isConvergeDone = convergeDone;
+    }
+
+    public boolean isConvergeDone() {
+        return isConvergeDone;
+    }
+
+    public HashMap<Integer, Integer> getNeighborLeader() {
+        return neighborLeader;
+    }
+
+    public void setNeighborLeader(HashMap<Integer, Integer> neighborLeader) {
+        this.neighborLeader = neighborLeader;
+    }
+
     public Boolean getFirstConverge() {
         return isFirstConverge;
     }
@@ -152,7 +173,7 @@ public class Node {
         this.normalEdgeCount = normalEdgeCount;
     }
 
-    public void setMstEdge(int mstEdgeCount) {
+    public void setMstEdgeCount(int mstEdgeCount) {
         this.mstEdgeCount = mstEdgeCount;
     }
 

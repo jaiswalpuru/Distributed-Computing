@@ -61,10 +61,14 @@ public class SynchGHS implements Runnable {
             ghsMessage.setMessageProcessed(true);
             switch (ghsMessage.getMessageType()) {
                 case BROADCAST: // broadcast all neighbors except the source.
-                    node.setSrcUID(ghsMessage.getSourceUID());
-                    broadcast();
-                    node.setFirstConverge(true);
-                    node.neighborsMinEdge.clear();
+                    if (node.getLeader() <= ghsMessage.getLeaderUID()) {
+                        node.setSrcUID(ghsMessage.getSourceUID());
+                        node.setFirstConverge(true);
+                        node.setConvergeDone(false);
+                        node.setLeader(ghsMessage.getLeaderUID());
+                        node.neighborsMinEdge.clear();
+                        broadcast();
+                    }
                     break;
                 case CONVERGE_CAST:
                     // MST edges.
@@ -79,18 +83,23 @@ public class SynchGHS implements Runnable {
                     convergeCast();
                     break;
                 case START_MERGE:
+                    if (!node.isConvergeDone()) {
+                        ghsMessage.setMessageProcessed(false);
+                        continue;
+                    }
                     startMerge(ghsMessage);
                     break;
                 case INFORM_LEADER:
-                    if (node.getSrcUID() != -1)
-                        sendMessage(node.getUID(), node.getSrcUID(), node.getLeader(), MessageType.INFORM_LEADER, null);
-                    else{
+                    if (node.getSrcUID() != -1) {
+                        if (node.getLeader() <= ghsMessage.getLeaderUID())
+                            sendMessage(node.getUID(), node.getSrcUID(), node.getLeader(), MessageType.INFORM_LEADER, null);
+                    } else{
                         broadcastLeader();
-                        // to be checked.
-                        //iterate through all edges adn check if all the messages in array are marked then don't do anything.
+                        //iterate through all edges and check if all the messages in array are marked then don't do anything.
                         Thread.sleep(10000);
                         if (checkAllMessages(ghsMessages)) {
-                            processTerminate();
+//                            processTerminate();
+                            initBroadcast();
                         }
                     }
                     break;
@@ -110,6 +119,13 @@ public class SynchGHS implements Runnable {
         }
     }
 
+    public void initBroadcast(){
+        node.setFirstConverge(true);
+        node.neighborsMinEdge.clear();
+        log.log(Level.INFO, "calling broadcast from init broadcast");
+        broadcast();
+    }
+
     /**
      * To check whether all the messages have been processed or not
      * @param m list of all the messages in buffer
@@ -122,29 +138,6 @@ public class SynchGHS implements Runnable {
             }
         }
         return true;
-    }
-
-    /**
-     * Starts the merge operation with the edge given in message
-     * @param msg contains the min edge vertex
-     */
-    public void startMerge(GHSMessage msg) {
-        node.updateMyGraph(msg.getSourceUID(), EdgeType.MST_EDGE);
-        //check whose leader wins
-        if (node.getLeader() < msg.getLeaderUID()) {
-            //Current node lost
-            node.setLeader(msg.getLeaderUID());
-            sendMessage(node.getUID(), msg.getSourceUID(), node.getLeader(), MessageType.INFORM_LEADER, null);
-        } else {
-            //Current node winner
-            if (node.getSrcUID() != -1)
-                sendMessage(node.getUID(), node.getSrcUID(), node.getLeader(), MessageType.INFORM_LEADER, null);
-            else {
-                if (msg.getLeaderUID() == node.getLeader()) {
-                    broadcastLeader();
-                }
-            }
-        }
     }
 
     /**
@@ -183,14 +176,29 @@ public class SynchGHS implements Runnable {
      */
     public void convergeCast() {
         if(node.getFirstConverge()) {
+            log.log(Level.INFO, " UID " + node.getUID() + " in node.getFirstConverge");
             node.setFirstConverge(false);
             node.neighborLeader.clear();
             sendMessageOnNormalEdge();
             return;
         }
+
         HashMap<Integer, Edge> neighborsMinEdge = node.getNeighborsMinEdge();
         HashMap<Integer, Integer> neighborsLeader = node.neighborLeader;
-        if (node.getMstEdgeCount() != neighborsMinEdge.size() || node.getNormalEdgeCount() != neighborsLeader.size()) {
+
+        log.log(Level.INFO, " Neighbors min edge : " + neighborsMinEdge + " Neighbors leader"  +neighborsLeader);
+        log.log(Level.INFO, "Normal edge count : " + node.getNormalEdgeCount());
+        log.log(Level.INFO, "MST Edge Count : " + node.getMstEdgeCount());
+
+        //neighbors min edge size == mst edge count (leader)
+        //for internal nodes neighbors min edge size = mstEdge count-1
+        //for leaf mst edge count = 0
+        if (
+                (node.getMstEdgeCount() != 0 && //leaf nodes
+                        (node.getSrcUID() == -1 && node.getMstEdgeCount() != neighborsMinEdge.size()) //root node
+                || (node.getSrcUID() != -1 && node.getMstEdgeCount()-1 != neighborsMinEdge.size())) //internal nodes
+                || node.getNormalEdgeCount() != neighborsLeader.size()
+        ) {
             return;
         }
 
@@ -215,6 +223,7 @@ public class SynchGHS implements Runnable {
         // update the min edge from the neighbors
         for (Integer srcUID : neighborsMinEdge.keySet()) {
             Edge e = neighborsMinEdge.get(srcUID);
+            if (e == null) continue;
             if (currMinEdge == null) currMinEdge = e;
             else {
                 if (e.compare(currMinEdge)) {
@@ -228,6 +237,7 @@ public class SynchGHS implements Runnable {
         log.log(Level.INFO, "Neighbors leader <neighbor, leader> : "  + node.neighborLeader);
         // send message of converge cast only if I am not the leader else need to broadcast
         // the minimum edge
+        node.setConvergeDone(true);
         if(node.getSrcUID() == -1) {
             //Send Merge Message
             log.log(Level.INFO, " I am the leader UID : " + node.getUID() + "\n");
@@ -243,13 +253,38 @@ public class SynchGHS implements Runnable {
      */
     public void processTerminate() {
         log.log(Level.INFO,  "Terminating : "+ node.getUID() + "\n");
-        node.setActive(false);
         List<Edge> neighbor = node.getNeighbors();
         log.log(Level.INFO, "\nCurrent UID: " + node.getUID());
         for (Edge nei : neighbor) {
             if (nei.getType() == EdgeType.MST_EDGE) {
                 log.log(Level.INFO,  "MST edge : " + nei + "\n");
                 sendMessage(node.getUID(), nei.getToVertex(), node.getLeader(), MessageType.TERMINATE, null);
+            }
+        }
+        node.setActive(false);
+    }
+
+    /**
+     * Starts the merge operation with the edge given in message
+     * @param msg contains the min edge vertex
+     */
+    public void startMerge(GHSMessage msg) {
+        Edge mstCheck = node.getEdge(msg.getSourceUID());
+        if (mstCheck.getType() != EdgeType.MST_EDGE) node.updateMyGraph(msg.getSourceUID(), EdgeType.MST_EDGE);
+
+        //check whose leader wins
+        if (node.getLeader() < msg.getLeaderUID()) {
+            //Current node lost
+            node.setLeader(msg.getLeaderUID());
+            sendMessage(node.getUID(), msg.getSourceUID(), node.getLeader(), MessageType.INFORM_LEADER, null);
+        } else {
+            //Current node winner
+            if (node.getSrcUID() != -1)
+                sendMessage(node.getUID(), node.getSrcUID(), node.getLeader(), MessageType.INFORM_LEADER, null);
+            else {
+                if (msg.getLeaderUID() == node.getLeader()) {
+                    broadcastLeader();
+                }
             }
         }
     }
@@ -299,11 +334,14 @@ public class SynchGHS implements Runnable {
      */
     public void sendMessageOnNormalEdge(){
         List<Edge> neighbors = node.getNeighbors();
+        boolean isNormalEdge = false;
         for(Edge e: neighbors){
             if(e.getType() == EdgeType.NORMAL_EDGE){
+                isNormalEdge = true;
                 sendMessage(node.getUID(), e.getToVertex(), node.getLeader(), MessageType.GET_LEADER, null);
             }
         }
+        if (!isNormalEdge) convergeCast();
     }
 
     /**

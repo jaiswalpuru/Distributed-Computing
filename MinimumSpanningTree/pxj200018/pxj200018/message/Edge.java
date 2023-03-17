@@ -1,6 +1,8 @@
 package pxj200018.message;
 
-public class Edge {
+import java.io.Serializable;
+
+public class Edge implements Serializable {
     int fromVertex;
     int toVertex;
     int edgeWt;
