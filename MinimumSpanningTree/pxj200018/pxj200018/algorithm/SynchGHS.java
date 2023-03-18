@@ -20,6 +20,7 @@ import java.util.logging.Logger;
 
 public class SynchGHS implements Runnable {
     private final static Logger log = Logger.getLogger(String.valueOf(SynchGHS.class));
+    boolean DEBUG = false;
     Node node;
     Config c;
 
@@ -54,14 +55,23 @@ public class SynchGHS implements Runnable {
         }
     }
 
+    /**
+     * Processes all the messages in the buffer.
+     */
     public synchronized void processMessages() throws InterruptedException {
         List<GHSMessage> ghsMessages = Collections.synchronizedList(node.getSynchGHSMessages());
         for (GHSMessage ghsMessage : ghsMessages) {
             if (ghsMessage.isMessageProcessed()) continue;
             ghsMessage.setMessageProcessed(true);
             switch (ghsMessage.getMessageType()) {
+
                 case BROADCAST: // broadcast all neighbors except the source.
+                    if (!node.isConvergeDone()) {
+                        ghsMessage.setMessageProcessed(false);
+                        continue;
+                    }
                     if (node.getLeader() <= ghsMessage.getLeaderUID()) {
+                        log.log(Level.INFO, "\nBROADCAST : "  +ghsMessage + "\n");
                         node.setSrcUID(ghsMessage.getSourceUID());
                         node.setFirstConverge(true);
                         node.setConvergeDone(false);
@@ -70,60 +80,79 @@ public class SynchGHS implements Runnable {
                         broadcast();
                     }
                     break;
+
                 case CONVERGE_CAST:
-                    // MST edges.
+                    log.log(Level.INFO, "\nCONVERGE_CAST : " + ghsMessage + "\n");
                     node.updateMinEdge(ghsMessage.getSourceUID(), ghsMessage.getMinEdge());
                     convergeCast();
                     break;
+
                 case GET_LEADER:
+                    log.log(Level.INFO, "\nGET_LEADER : " + ghsMessage + "\n");
                     sendMessage(node.getUID(), ghsMessage.getSourceUID(), node.getLeader(), MessageType.SEND_LEADER, null);
                     break;
+
                 case SEND_LEADER:
+                    log.log(Level.INFO, "\nSEND_LEADER : " + ghsMessage + "\n");
                     node.updateNeighborLeader(ghsMessage.getSourceUID(), ghsMessage.getLeaderUID());
                     convergeCast();
                     break;
+
                 case START_MERGE:
                     if (!node.isConvergeDone()) {
                         ghsMessage.setMessageProcessed(false);
                         continue;
                     }
+                    log.log(Level.INFO, "\nSTART_MERGE : " + ghsMessage + "\n");
                     startMerge(ghsMessage);
                     break;
+
                 case INFORM_LEADER:
                     if (node.getSrcUID() != -1) {
-                        if (node.getLeader() <= ghsMessage.getLeaderUID())
-                            sendMessage(node.getUID(), node.getSrcUID(), node.getLeader(), MessageType.INFORM_LEADER, null);
-                    } else{
-                        broadcastLeader();
-                        //iterate through all edges and check if all the messages in array are marked then don't do anything.
-                        Thread.sleep(10000);
-                        if (checkAllMessages(ghsMessages)) {
-//                            processTerminate();
-                            initBroadcast();
+                        log.log(Level.INFO, "\nINFORM_LEADER : " + ghsMessage + "\n");
+                        sendMessage(node.getUID(), node.getSrcUID(), node.getLeader(), MessageType.INFORM_LEADER, null);
+                    } else {
+                        if(!node.isConvergeDone()) {
+                            ghsMessage.setMessageProcessed(false);
+                            continue;
+                        }
+                        if (node.getLeader() == node.getUID()) {
+                            log.log(Level.INFO, "\nINFORM_LEADER : " + ghsMessage + "\n");
+                            broadcastLeader();
+                            //iterate through all edges and check if all the messages in array are marked then don't do anything.
+                            Thread.sleep(10000);
+                            if (checkAllMessages(ghsMessages)) {
+                                node.setFirstConverge(true);
+                                node.setConvergeDone(false);
+                                node.neighborLeader.clear();
+                                node.neighborsMinEdge.clear();
+                                broadcast();
+                            }
                         }
                     }
                     break;
+
                 case LEADER_BROADCAST:
+                    if(!node.isConvergeDone()) {
+                        ghsMessage.setMessageProcessed(false);
+                        continue;
+                    }
+                    log.log(Level.INFO , "\nLEADER_BROADCAST : " + ghsMessage + "\n");
                     if (node.getLeader() <= ghsMessage.getLeaderUID()) {
                         node.setLeader(ghsMessage.getLeaderUID());
                         node.setSrcUID(ghsMessage.getSourceUID());
                         broadcastLeader();
                     }
                     break;
+
                 case TERMINATE:
+                    log.log(Level.INFO, "\nTERMINATE : " + ghsMessage + "\n");
                     processTerminate();
                     break;
                 default:
                     break;
             }
         }
-    }
-
-    public void initBroadcast(){
-        node.setFirstConverge(true);
-        node.neighborsMinEdge.clear();
-        log.log(Level.INFO, "calling broadcast from init broadcast");
-        broadcast();
     }
 
     /**
@@ -172,79 +201,106 @@ public class SynchGHS implements Runnable {
     }
 
     /**
+     * Tells whether it is leaf node or not.
+     * @return leaf node or not.
+     */
+    public boolean isLeafNode() {
+        return (node.getSrcUID() != -1
+                && (node.getMstEdgeCount() == 1
+                        && node.getNormalEdgeCount() == node.getNeighborLeader().size())
+        );
+    }
+
+    /**
+     * Tells whether it is internal node or not.
+     * @return internal node or not.
+     */
+    public boolean isInternalNode() {
+        return (node.getSrcUID() != -1
+                && node.getMstEdgeCount()-1 == node.getNeighborsMinEdge().size()
+                && node.getNeighborLeader().size() == node.getNormalEdgeCount()
+        );
+    }
+
+    /**
+     * Tells whether it is root node or not.
+     * @return root node or not.
+     */
+    public boolean isRootNode() {
+        return (node.getSrcUID() == -1
+                && node.getNormalEdgeCount() == node.getNeighborLeader().size()
+                && node.getNeighborsMinEdge().size() == node.getMstEdgeCount()
+        );
+    }
+
+    /**
      * Converge cast when message is received from all its neighbors, and compute the MWOE
      */
     public void convergeCast() {
         if(node.getFirstConverge()) {
-            log.log(Level.INFO, " UID " + node.getUID() + " in node.getFirstConverge");
             node.setFirstConverge(false);
+            node.setConvergeDone(false);
             node.neighborLeader.clear();
             sendMessageOnNormalEdge();
             return;
         }
 
-        HashMap<Integer, Edge> neighborsMinEdge = node.getNeighborsMinEdge();
-        HashMap<Integer, Integer> neighborsLeader = node.neighborLeader;
+        HashMap<Integer, Edge> neighborsMinEdge = new HashMap<>(node.getNeighborsMinEdge());
+        HashMap<Integer, Integer> neighborsLeader = new HashMap<>(node.getNeighborLeader());
 
-        log.log(Level.INFO, " Neighbors min edge : " + neighborsMinEdge + " Neighbors leader"  +neighborsLeader);
-        log.log(Level.INFO, "Normal edge count : " + node.getNormalEdgeCount());
-        log.log(Level.INFO, "MST Edge Count : " + node.getMstEdgeCount());
+        boolean leafNode = isLeafNode();
+        boolean internalNode = isInternalNode();
+        boolean rootNode = isRootNode();
 
-        //neighbors min edge size == mst edge count (leader)
-        //for internal nodes neighbors min edge size = mstEdge count-1
-        //for leaf mst edge count = 0
-        if (
-                (node.getMstEdgeCount() != 0 && //leaf nodes
-                        (node.getSrcUID() == -1 && node.getMstEdgeCount() != neighborsMinEdge.size()) //root node
-                || (node.getSrcUID() != -1 && node.getMstEdgeCount()-1 != neighborsMinEdge.size())) //internal nodes
-                || node.getNormalEdgeCount() != neighborsLeader.size()
-        ) {
-            return;
-        }
+        if (DEBUG)
+            log.log(Level.INFO, "\nLeaf Node : " + leafNode + "\nInternal Node : " + internalNode + "\nRoot Node " + rootNode + "\n");
 
-        Edge currMinEdge = null;
+        if (leafNode || internalNode || rootNode){
 
-        //else process all converge messages
-        for (Integer srcUID : neighborsLeader.keySet()) {
-            int neighLeader = neighborsLeader.get(srcUID);
-            if (neighLeader == node.getLeader()) {
-                node.updateMyGraph(srcUID, EdgeType.SAME_COMPONENT); // update the vertex which belong to the same component.
-            } else {
-                Edge neiEdge = node.getEdge(srcUID);
-                if(currMinEdge == null) currMinEdge = neiEdge;
-                else{
-                    if(neiEdge.compare(currMinEdge)){
-                        currMinEdge = neiEdge;
+            if (DEBUG)
+                log.log(Level.INFO, "Source UID : " + node.getSrcUID() + "\nMSTEdgeCount : " + node.getMstEdgeCount() + "\nNormalEdgeCount" + node.getNormalEdgeCount() + "\nNeighbor Leader" + node.getNeighborLeader() +
+                        "\nNeighborsMinEdge : "+ node.getNeighborsMinEdge() + "\n");
+
+            Edge currMinEdge = null;
+            //else process all converge messages
+            for (Integer srcUID : neighborsLeader.keySet()) {
+                if (neighborsLeader.getOrDefault(srcUID, -1) == -1) continue;
+                int neighLeader = neighborsLeader.get(srcUID);
+                if (neighLeader == node.getLeader()) {
+                    node.updateMyGraph(srcUID, EdgeType.SAME_COMPONENT); // update the vertex which belong to the same component.
+                } else {
+                    Edge neiEdge = node.getEdge(srcUID);
+                    if(currMinEdge == null) currMinEdge = neiEdge;
+                    else{
+                        if(neiEdge.compare(currMinEdge)){
+                            currMinEdge = neiEdge;
+                        }
                     }
                 }
             }
-        }
 
-        // update the min edge from the neighbors
-        for (Integer srcUID : neighborsMinEdge.keySet()) {
-            Edge e = neighborsMinEdge.get(srcUID);
-            if (e == null) continue;
-            if (currMinEdge == null) currMinEdge = e;
-            else {
-                if (e.compare(currMinEdge)) {
-                    currMinEdge = e;
+            // update the min edge from the neighbors
+            for (Integer srcUID : neighborsMinEdge.keySet()) {
+                Edge e = neighborsMinEdge.get(srcUID);
+                if (e == null) continue;
+                if (currMinEdge == null) currMinEdge = e;
+                else {
+                    if (e.compare(currMinEdge)) {
+                        currMinEdge = e;
+                    }
                 }
             }
-        }
 
-        log.log(Level.INFO, "Current minimum edge on UID : " + node.getUID() + " = " + currMinEdge + "\n");
-        log.log(Level.INFO, "Neighbors min edges map <neighbor, minEdge> : " + node.getNeighborsMinEdge()+"\n");
-        log.log(Level.INFO, "Neighbors leader <neighbor, leader> : "  + node.neighborLeader);
-        // send message of converge cast only if I am not the leader else need to broadcast
-        // the minimum edge
-        node.setConvergeDone(true);
-        if(node.getSrcUID() == -1) {
-            //Send Merge Message
-            log.log(Level.INFO, " I am the leader UID : " + node.getUID() + "\n");
-            if(currMinEdge == null) processTerminate();
-            else merge(currMinEdge);
-        } else {
-            sendMessage(node.getUID(), node.getSrcUID(), node.getLeader(), MessageType.CONVERGE_CAST, currMinEdge);
+            // send message of converge cast only if I am not the leader else need to broadcast
+            // the minimum edge
+            if(node.getSrcUID() == -1) {
+                //Send Merge Message
+                if(currMinEdge == null) processTerminate();
+                else merge(currMinEdge);
+            } else {
+                sendMessage(node.getUID(), node.getSrcUID(), node.getLeader(), MessageType.CONVERGE_CAST, currMinEdge);
+            }
+            node.setConvergeDone(true);
         }
     }
 
@@ -252,12 +308,12 @@ public class SynchGHS implements Runnable {
      * Sends termination signal to MST edges.
      */
     public void processTerminate() {
-        log.log(Level.INFO,  "Terminating : "+ node.getUID() + "\n");
         List<Edge> neighbor = node.getNeighbors();
-        log.log(Level.INFO, "\nCurrent UID: " + node.getUID());
+        log.log(Level.INFO, "\nCurrent UID: " + node.getUID()+"\n");
         for (Edge nei : neighbor) {
-            if (nei.getType() == EdgeType.MST_EDGE) {
-                log.log(Level.INFO,  "MST edge : " + nei + "\n");
+            if(nei.getType() == EdgeType.MST_EDGE)
+                log.log(Level.INFO,  "\nMST edge : " + nei + "\n");
+            if (nei.getToVertex() != node.getSrcUID() && nei.getType() == EdgeType.MST_EDGE) {
                 sendMessage(node.getUID(), nei.getToVertex(), node.getLeader(), MessageType.TERMINATE, null);
             }
         }
@@ -358,9 +414,11 @@ public class SynchGHS implements Runnable {
             Socket socket = new Socket(hostName, c.getMyPortNumber(hostName));
             ObjectOutputStream outputStream = new ObjectOutputStream(socket.getOutputStream());
             GHSMessage ghsM = new GHSMessage(src, dst, leader, messageType, minEdge);
-
             outputStream.writeObject(ghsM);
-            log.log(Level.INFO, "Message sent to " + dst + ", " + ghsM + "\n");
+
+            if (DEBUG)
+                log.log(Level.INFO, "\nMessage sent to : " + dst + ", " + ghsM + "\n");
+
             socket.close();
         } catch (IOException e) {
             log.log(Level.SEVERE,

@@ -48,10 +48,6 @@ public class GHSMessage implements Serializable {
         return leaderUID;
     }
 
-    public int getDestinationUID() {
-        return destinationUID;
-    }
-
     @Override
     public String toString() {
         return "source UID : " + sourceUID + ", destination UID : " + destinationUID + ", leader UID : " + leaderUID +

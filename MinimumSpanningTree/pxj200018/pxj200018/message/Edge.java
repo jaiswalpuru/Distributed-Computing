@@ -3,9 +3,9 @@ package pxj200018.message;
 import java.io.Serializable;
 
 public class Edge implements Serializable {
-    int fromVertex;
-    int toVertex;
     int edgeWt;
+    int toVertex;
+    int fromVertex;
     EdgeType type;
 
     public Edge(int from, int to, int wt, EdgeType t) {

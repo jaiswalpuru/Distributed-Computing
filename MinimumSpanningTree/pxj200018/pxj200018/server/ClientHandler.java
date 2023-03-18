@@ -3,7 +3,6 @@ package pxj200018.server;
 // References : https://www.baeldung.com/a-guide-to-java-sockets
 
 import pxj200018.message.GHSMessage;
-import pxj200018.message.MessageType;
 
 import java.io.*;
 import java.net.ServerSocket;
@@ -12,9 +11,10 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 public class ClientHandler implements Runnable {
+    private static final Logger log = Logger.getLogger(String.valueOf(ClientHandler.class));
+    boolean DEBUG = false;
     Node node;
     ServerSocket serverSocket;
-    private static final Logger log = Logger.getLogger(String.valueOf(ClientHandler.class));
     public ClientHandler(Node n) { this.node = n; }
     @Override
     public void run() {
@@ -31,14 +31,14 @@ public class ClientHandler implements Runnable {
                 socket = serverSocket.accept();
                 ObjectInputStream inputStream = new ObjectInputStream(socket.getInputStream());
                 GHSMessage ghsMsg = (GHSMessage) inputStream.readObject();
-                log.log(Level.INFO, "Synch GHS message received\n" + ghsMsg + "\n");
+
+                if (DEBUG)
+                    log.log(Level.INFO, "\nSynch GHS message received : " + ghsMsg + "\n");
+
                 node.getSynchGHSMessages().add(ghsMsg);
-
-                if (ghsMsg.getMessageType() == MessageType.TERMINATE) node.setActive(false);
-
                 socket.close();
             } catch (IOException | ClassNotFoundException e) {
-                log.log(Level.SEVERE, "Peleg : error in accepting request from machine " + node.hostName + "\n");
+                log.log(Level.SEVERE, "SynchGHS : error in accepting request from machine " + node.hostName + "\n");
                 throw new RuntimeException(e);
             }
 
@@ -47,7 +47,7 @@ public class ClientHandler implements Runnable {
         try {
             serverSocket.close();
         } catch (IOException e) {
-            log.log(Level.SEVERE, "Pelegs : error in closing the socket " + node.hostName + "\n");
+            log.log(Level.SEVERE, "Synch : error in closing the socket " + node.hostName + "\n");
             throw new RuntimeException(e);
         }
     }
