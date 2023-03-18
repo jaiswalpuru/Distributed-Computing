@@ -1,12 +1,12 @@
-package pxj200018.config;
+package ghs.config;
 
 /*
   This file contains all the details regarding the node
   and its neighbors
  */
 
-import pxj200018.message.Edge;
-import pxj200018.message.EdgeType;
+import ghs.message.Edge;
+import ghs.message.EdgeType;
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -32,7 +32,7 @@ public class Config {
 
     public void readFile() {
         try {
-            File fp = new File("pxj200018/launch/config.txt");
+            File fp = new File("ghs/launch/config.txt");
             Scanner sc = new Scanner(fp);
 
             while (sc.hasNextLine()) {

@@ -1,10 +1,10 @@
-package pxj200018.server;
+package ghs.server;
 
-import pxj200018.algorithm.SynchGHS;
-import pxj200018.config.Config;
-import pxj200018.message.Edge;
-import pxj200018.message.EdgeType;
-import pxj200018.message.GHSMessage;
+import ghs.algorithm.SynchGHS;
+import ghs.config.Config;
+import ghs.message.Edge;
+import ghs.message.EdgeType;
+import ghs.message.GHSMessage;
 
 import java.net.InetAddress;
 import java.net.UnknownHostException;

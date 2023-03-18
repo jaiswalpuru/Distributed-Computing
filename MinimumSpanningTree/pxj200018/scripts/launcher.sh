@@ -4,10 +4,10 @@
 netid=pxj200018
 
 # Root directory of your project
-PROJDIR=pxj200018/server/Node
+PROJDIR=ghs/server/Node
 
 # Directory where the config file is located on your local system
-CONFIGLOCAL=$HOME/Desktop/code/UTD\ Course\ Work/Distributed\ Systems\ CS\ 6380/Projects/MinimumSpanningTree/pxj200018/pxj200018/launch/config.txt
+CONFIGLOCAL=$HOME/Desktop/code/UTD\ Course\ Work/Distributed\ Systems\ CS\ 6380/Projects/MinimumSpanningTree/pxj200018/ghs/launch/config.txt
 
 # Directory your java classes are in
 # BINDIR=$PROJDIR/bin/pxj200018

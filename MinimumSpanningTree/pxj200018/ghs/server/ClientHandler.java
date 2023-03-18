@@ -1,8 +1,8 @@
-package pxj200018.server;
+package ghs.server;
 
 // References : https://www.baeldung.com/a-guide-to-java-sockets
 
-import pxj200018.message.GHSMessage;
+import ghs.message.GHSMessage;
 
 import java.io.*;
 import java.net.ServerSocket;

@@ -1,12 +1,12 @@
-package pxj200018.algorithm;
+package ghs.algorithm;
 
 import javafx.util.Pair;
-import pxj200018.config.Config;
-import pxj200018.message.Edge;
-import pxj200018.message.EdgeType;
-import pxj200018.message.GHSMessage;
-import pxj200018.message.MessageType;
-import pxj200018.server.Node;
+import ghs.config.Config;
+import ghs.message.Edge;
+import ghs.message.EdgeType;
+import ghs.message.GHSMessage;
+import ghs.message.MessageType;
+import ghs.server.Node;
 
 import java.io.IOException;
 import java.io.ObjectOutputStream;

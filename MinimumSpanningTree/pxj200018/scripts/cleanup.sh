@@ -4,10 +4,10 @@
 netid=pxj200018
 
 # Root directory of your project
-PROJDIR=/home/010/p/px/pxj200018/pxj200018
+PROJDIR=/home/010/p/px/pxj200018/ghs
 
 # Directory where the config file is located on your local system
-CONFIGLOCAL=$HOME/Desktop/code/UTD\ Course\ Work/Distributed\ Systems\ CS\ 6380/Projects/MinimumSpanningTree/pxj200018/pxj200018/launch/config.txt
+CONFIGLOCAL=$HOME/Desktop/code/UTD\ Course\ Work/Distributed\ Systems\ CS\ 6380/Projects/MinimumSpanningTree/pxj200018/ghs/launch/config.txt
 
 n=0
 

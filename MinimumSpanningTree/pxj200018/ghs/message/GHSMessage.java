@@ -1,4 +1,4 @@
-package pxj200018.message;
+package ghs.message;
 
 import java.io.Serializable;
 
