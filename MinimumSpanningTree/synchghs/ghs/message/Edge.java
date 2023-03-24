@@ -17,11 +17,12 @@ public class Edge implements Serializable {
 
     //returns true if edge1 is greater than edge2.
     public boolean compare(Edge edge) {
+        System.out.println(this + " compared to edge : " + edge);
         if (getEdgeWt() == edge.getEdgeWt()) {
-            int maxUID1 = Math.max(getFromVertex(), edge.getToVertex());
-            int minUID1 = Math.min(getFromVertex(), edge.getToVertex());
-            int maxUID2 = Math.max(getFromVertex(), edge.getToVertex());
-            int minUID2 = Math.min(getFromVertex(), edge.getToVertex());
+            int maxUID1 = Math.max(getFromVertex(), getToVertex());
+            int minUID1 = Math.min(getFromVertex(), getToVertex());
+            int maxUID2 = Math.max(edge.getFromVertex(), edge.getToVertex());
+            int minUID2 = Math.min(edge.getFromVertex(), edge.getToVertex());
             if (maxUID1 == maxUID2) {
                 return minUID1 > minUID2;
             }
