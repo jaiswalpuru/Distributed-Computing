@@ -10,6 +10,7 @@ import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.logging.Level;
@@ -24,6 +25,7 @@ public class Node {
     int UID; // My UID.
     int srcUID;
     int leader; // who is the leader.
+    int round;
     int mstEdgeCount;
     Boolean isActive;
     int normalEdgeCount;
@@ -33,6 +35,7 @@ public class Node {
     Boolean isFirstConverge;
     public HashMap<Integer, Edge> neighborsMinEdge; // <srcUID, minEdge>
     public HashMap<Integer, Integer> neighborLeader; // <srcUID,leaderUID>
+    public HashSet<Integer> neighborRepliedRound;
     public CopyOnWriteArrayList<GHSMessage> ghsMessages; // messages which will be received from neighbors.
     /*-------------------------------------------Synch GHS variables-----------------------------------------------------*/
 
@@ -66,12 +69,14 @@ public class Node {
 
         //ghs
         srcUID = -1;
+        round = 0;
         leader = UID;
         isActive = true;
         mstEdgeCount = 0;
         isFirstMessage = true;
         isFirstConverge = true;
         isConvergeDone = false;
+        neighborRepliedRound = new HashSet<>();
         neighborLeader = new HashMap<>();
         normalEdgeCount = neighbors.size();
         neighborsMinEdge = new HashMap<>();
@@ -133,6 +138,14 @@ public class Node {
             if(e.getToVertex() == srcUID)   return e;
         }
         return null;
+    }
+
+    public int getRound() {
+        return round;
+    }
+
+    public void setRound(int round) {
+        this.round = round;
     }
 
     public CopyOnWriteArrayList<GHSMessage> getSynchGHSMessages() { return ghsMessages; }

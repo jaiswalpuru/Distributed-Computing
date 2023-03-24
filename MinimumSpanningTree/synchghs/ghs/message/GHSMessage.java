@@ -8,16 +8,18 @@ public class GHSMessage implements Serializable {
     int destinationUID;
     int leaderUID;
     MessageType messageType;
+    int round;
     Edge minEdge;
     boolean isMessageProcessed;
 
-    public GHSMessage(int src, int dst, int leader, MessageType msgType, Edge e) {
+    public GHSMessage(int src, int dst, int leader, MessageType msgType, Edge e, int r) {
         sourceUID = src;
         destinationUID = dst;
         leaderUID = leader;
         messageType = msgType;
         minEdge = e;
         isMessageProcessed = false;
+        round = r;
     }
 
     public void setMinEdge(Edge minEdge) {
@@ -48,9 +50,17 @@ public class GHSMessage implements Serializable {
         return leaderUID;
     }
 
+    public int getRound(){
+        return round;
+    }
+
+    public void setRound(int r){
+        this.round = r;
+    }
+
     @Override
     public String toString() {
         return "source UID : " + sourceUID + ", destination UID : " + destinationUID + ", leader UID : " + leaderUID +
-                ", message type : " + messageType + ", min edges " + minEdge;
+                ", message type : " + messageType + ", min edges " + minEdge + ", round : " + round;
     }
 }

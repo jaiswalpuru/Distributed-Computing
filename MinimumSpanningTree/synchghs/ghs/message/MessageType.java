@@ -1,6 +1,7 @@
 package ghs.message;
 
 public enum MessageType {
+    EMPTY,
     MERGE,
     TERMINATE,
     BROADCAST,

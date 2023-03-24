@@ -12,7 +12,7 @@ import java.util.logging.Logger;
 
 public class ClientHandler implements Runnable {
     private static final Logger log = Logger.getLogger(String.valueOf(ClientHandler.class));
-    boolean DEBUG = false;
+    boolean DEBUG = true;
     Node node;
     ServerSocket serverSocket;
     public ClientHandler(Node n) { this.node = n; }
