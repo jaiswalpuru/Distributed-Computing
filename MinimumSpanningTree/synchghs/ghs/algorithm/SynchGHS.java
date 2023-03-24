@@ -1,12 +1,10 @@
 package ghs.algorithm;
 
+import ghs.message.*;
 import javafx.util.Pair;
 import ghs.config.Config;
-import ghs.message.Edge;
-import ghs.message.EdgeType;
-import ghs.message.GHSMessage;
-import ghs.message.MessageType;
 import ghs.server.Node;
+import org.omg.CORBA.INTERNAL;
 
 import java.io.IOException;
 import java.io.ObjectOutputStream;
@@ -71,7 +69,7 @@ public class SynchGHS implements Runnable {
                     log.log(Level.INFO, "\nBROADCAST : "  +ghsMessage + "\n");
                     if(node.isConvergeDone() && ghsMessage.getRound() >= node.getRound()){
                         log.log(Level.INFO, "Condition Satisfied and doing broadcast!");
-                        //node.setSrcUID(ghsMessage.getSourceUID());
+                        node.setSrcUID(ghsMessage.getSourceUID());
                         node.setFirstConverge(true);
                         node.setConvergeDone(false);
                         node.setRound(ghsMessage.getRound());
@@ -92,6 +90,12 @@ public class SynchGHS implements Runnable {
                     break;
 
                 case GET_LEADER:
+                    //need to wait
+                    if (node.getUID() < ghsMessage.getRound()) {
+                        ghsMessage.setMessageProcessed(false);
+                        continue;
+                    }
+
                     log.log(Level.INFO, "\nGET_LEADER : " + ghsMessage + "\n");
                     sendMessage(node.getUID(), ghsMessage.getSourceUID(), node.getLeader(), MessageType.SEND_LEADER, null);
                     break;
@@ -117,8 +121,6 @@ public class SynchGHS implements Runnable {
                 case START_MERGE:
                     node.neighborRepliedRound.add(ghsMessage.getSourceUID());
                     if (!node.isConvergeDone() || ghsMessage.getRound() > node.getRound()) {
-                        //log.log(Level.INFO, "start merge if UID " + node.getUID());
-                        //log.log(Level.INFO, node.neighborRepliedRound+" start merge neighbor");
                         ghsMessage.setMessageProcessed(false);
                         continue;
                     }
@@ -132,6 +134,7 @@ public class SynchGHS implements Runnable {
                         continue;
                     }
                     log.log(Level.INFO , "\nLEADER_BROADCAST : " + ghsMessage + "\n");
+                    node.setType(NodeType.LEAF);
                     node.setLeader(ghsMessage.getLeaderUID());
                     node.setSrcUID(ghsMessage.getSourceUID());
                     broadcastLeader();
@@ -155,6 +158,7 @@ public class SynchGHS implements Runnable {
         List<Edge> neighbors = node.getNeighbors();
         for (Edge nei : neighbors) {
             if (nei.getToVertex() == node.getSrcUID() || nei.getType() != EdgeType.MST_EDGE) continue;
+            if(node.getSrcUID() != -1)  node.setType(NodeType.INTERNAL);
             sendMessage(nei.getFromVertex(), nei.getToVertex(), node.getLeader(), MessageType.LEADER_BROADCAST, null);
         }
     }
@@ -184,9 +188,8 @@ public class SynchGHS implements Runnable {
      * @return leaf node or not.
      */
     public boolean isLeafNode() {
-        return (node.getSrcUID() != -1
-                && (node.getMstEdgeCount() == 1
-                        && node.getNormalEdgeCount() == node.getNeighborLeader().size())
+        return (node.getType() == NodeType.LEAF
+                && node.getNormalEdgeCount() == node.getNeighborLeader().size()
         );
     }
 
@@ -195,7 +198,7 @@ public class SynchGHS implements Runnable {
      * @return internal node or not.
      */
     public boolean isInternalNode() {
-        return (node.getSrcUID() != -1
+        return (node.getType() == NodeType.INTERNAL
                 && node.getMstEdgeCount()-1 == node.getNeighborsMinEdge().size()
                 && node.getNeighborLeader().size() == node.getNormalEdgeCount()
         );
@@ -206,10 +209,14 @@ public class SynchGHS implements Runnable {
      * @return root node or not.
      */
     public boolean isRootNode() {
-        return (node.getSrcUID() == -1
+        return (node.getType() == NodeType.ROOT
                 && node.getNormalEdgeCount() == node.getNeighborLeader().size()
                 && node.getNeighborsMinEdge().size() == node.getMstEdgeCount()
         );
+    }
+
+    public void print(String msg) {
+        log.log(Level.INFO, msg);
     }
 
     /**
@@ -234,11 +241,11 @@ public class SynchGHS implements Runnable {
         if (DEBUG)
             log.log(Level.INFO, "\nLeaf Node : " + leafNode + "\nInternal Node : " + internalNode + "\nRoot Node " + rootNode + "\n");
 
+        if (DEBUG)
+            log.log(Level.INFO, "Source UID : " + node.getSrcUID() + "\nMSTEdgeCount : " + node.getMstEdgeCount() + "\nNormalEdgeCount" + node.getNormalEdgeCount() + "\nNeighbor Leader" + node.getNeighborLeader() +
+                    "\nNeighborsMinEdge : "+ node.getNeighborsMinEdge() + "\nNode Type : " + node.getType() + "\n");
         if (leafNode || internalNode || rootNode){
 
-            if (DEBUG)
-                log.log(Level.INFO, "Source UID : " + node.getSrcUID() + "\nMSTEdgeCount : " + node.getMstEdgeCount() + "\nNormalEdgeCount" + node.getNormalEdgeCount() + "\nNeighbor Leader" + node.getNeighborLeader() +
-                        "\nNeighborsMinEdge : "+ node.getNeighborsMinEdge() + "\n");
 
             Edge currMinEdge = null;
             //else process all converge messages
@@ -305,6 +312,19 @@ public class SynchGHS implements Runnable {
         return cnt;
     }
 
+    public void updateNodeType() {
+        //check for internal node
+        if (node.getSrcUID() == -1) {
+            node.setType(NodeType.ROOT);
+        } else if (node.getType() == NodeType.ROOT && node.getMstEdgeCount() > 0) {
+            node.setType(NodeType.INTERNAL);
+        } else if (node.getType() == NodeType.ROOT ) {
+            node.setType(NodeType.LEAF);
+        } else if (node.getType() == NodeType.LEAF){
+            node.setType(NodeType.INTERNAL);
+        }
+    }
+
     /**
      * Starts the merge operation with the edge given in message
      * @param msg contains the min edge vertex
@@ -326,7 +346,8 @@ public class SynchGHS implements Runnable {
 //                    cnt = 0;
                 }
                 node.setSrcUID(-1);
-                node.setLeader(node.getLeader());
+                node.setLeader(node.getUID());
+                node.setType(NodeType.ROOT);
                 log.log(Level.INFO, "Leader update UID : " + node.getUID() + " message leader : " +  msg.getLeaderUID());
                 broadcastLeader();
                 Thread.sleep(2000);
@@ -340,6 +361,7 @@ public class SynchGHS implements Runnable {
             }
         } else {
             log.log(Level.INFO,"Updating MST graph");
+//            node.setSrcUID(msg.getSourceUID());
             node.updateMyGraph(msg.getSourceUID(), EdgeType.MST_EDGE);
         }
 
@@ -362,22 +384,23 @@ public class SynchGHS implements Runnable {
             //merge
             Edge minEdge = null;
             for (Edge nei : node.getNeighbors()) {
-                if (nei.getType() == EdgeType.NORMAL_EDGE && compareEdge(currMinEdge, nei)) {
+                if (compareEdge(currMinEdge, nei)) {
                         minEdge = nei;
                 } else {
                     //send Empty msg to that edge
-                    if(nei.getType() == EdgeType.MST_EDGE)
+                    if(nei.getType() == EdgeType.MST_EDGE && nei.getToVertex() != node.getSrcUID())
                         sendMessage(node.getUID(), nei.getToVertex(), node.getLeader(), MessageType.MERGE, currMinEdge);
-                    else if(nei.getType() == EdgeType.NORMAL_EDGE){
+                    else if(nei.getType() == EdgeType.NORMAL_EDGE || node.getSrcUID() == nei.getToVertex()){
                         sendMessage(node.getUID(), nei.getToVertex(), node.getLeader(), MessageType.EMPTY, null);
                     }
                 }
             }
 
             //start merge with min edge
-            assert minEdge != null;
-            node.updateMyGraph(minEdge.getToVertex(), EdgeType.MST_EDGE);
-            sendMessage(minEdge.getFromVertex(), minEdge.getToVertex(), node.getLeader(), MessageType.START_MERGE, null);
+            if (minEdge != null) {
+                node.updateMyGraph(minEdge.getToVertex(), EdgeType.MST_EDGE);
+                sendMessage(minEdge.getFromVertex(), minEdge.getToVertex(), node.getLeader(), MessageType.START_MERGE, null);
+            }
         } else {
             // forward to mst edges
             for (Edge nei : node.getNeighbors()) {

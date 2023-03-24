@@ -5,6 +5,7 @@ import ghs.config.Config;
 import ghs.message.Edge;
 import ghs.message.EdgeType;
 import ghs.message.GHSMessage;
+import ghs.message.NodeType;
 
 import java.net.InetAddress;
 import java.net.UnknownHostException;
@@ -44,6 +45,7 @@ public class Node {
     int portNumber;
     String hostName;
     List<Edge> neighbors;
+    NodeType type;
 
     /**
      * Constructor
@@ -68,6 +70,7 @@ public class Node {
         neighbors = config.getNeighbors(UID);
 
         //ghs
+        type =NodeType.ROOT;
         srcUID = -1;
         round = 0;
         leader = UID;
@@ -114,12 +117,15 @@ public class Node {
      * @param srcUID uid of the source vertex whose graph need to be updated.
      */
     public void updateMyGraph(int srcUID, EdgeType type) {
-        if (type == EdgeType.MST_EDGE) setMstEdgeCount(getMstEdgeCount()+1);
+
+        //if (type == EdgeType.MST_EDGE) setMstEdgeCount(getMstEdgeCount()+1);
 
         for (Edge e : neighbors) {
-            if (e.getToVertex() == srcUID) {
+            if (e.getToVertex() == srcUID && e.getType() != type) {
                 setNormalEdgeCount(getNormalEdgeCount()-1);
                 e.setType(type);
+                if(e.getType() == EdgeType.MST_EDGE)
+                    setMstEdgeCount(getMstEdgeCount() + 1);
                 if (neighborLeader.getOrDefault(srcUID, 0) != 0) {
                     neighborLeader.remove(srcUID);
                 }
@@ -138,6 +144,14 @@ public class Node {
             if(e.getToVertex() == srcUID)   return e;
         }
         return null;
+    }
+
+    public NodeType getType() {
+        return type;
+    }
+
+    public void setType(NodeType type) {
+        this.type = type;
     }
 
     public int getRound() {
