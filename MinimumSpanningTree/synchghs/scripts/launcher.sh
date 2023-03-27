@@ -29,10 +29,9 @@ cat "$CONFIGLOCAL" | sed -e "s/#.*//" | sed -e "/^\s*$/d" |
     	read line
     	p=$( echo $line | awk '{ print $1 }' )
         host=$( echo "$line" | awk '{ print $2 }' )
-	
     osascript -e '
                 tell app "Terminal"
-                    do script "ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no '$netid@$host'  'java' '$PROJDIR';"
+                    do script "ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no '$netid@$host'  'java' '$PROJDIR' '$p';"
                 end tell'
 
         n=$(( n + 1 ))
