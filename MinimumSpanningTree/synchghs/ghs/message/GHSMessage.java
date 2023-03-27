@@ -60,7 +60,7 @@ public class GHSMessage implements Serializable {
 
     @Override
     public String toString() {
-        return "source UID : " + sourceUID + ", destination UID : " + destinationUID + ", leader UID : " + leaderUID +
-                ", message type : " + messageType + ", min edges " + minEdge + ", round : " + round;
+        return "\tROUND: " + round + "\tMESSAGE_TYPE: " + messageType + "\tSRC_UID: " + sourceUID + "\tDST_UID: " + destinationUID + "\tLEADER_UID: " + leaderUID + "\tMIN_EDGE: " + minEdge;  //"source UID : " + sourceUID + ", destination UID : " + destinationUID + ", leader UID : " + leaderUID +
+          //      ", message type : " + messageType + ", min edges " + minEdge + ", round : " + round;
     }
 }

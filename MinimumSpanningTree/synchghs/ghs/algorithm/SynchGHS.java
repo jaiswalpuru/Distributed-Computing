@@ -295,10 +295,11 @@ public class SynchGHS implements Runnable {
      */
     public void processTerminate() {
         List<Edge> neighbor = node.getNeighbors();
-        log.log(Level.INFO, "\nCurrent UID: " + node.getUID()+"\n");
+        log.log(Level.INFO, "\n\n******************\n" + node +  "\n******************\n\n");
         for (Edge nei : neighbor) {
-            if(nei.getType() == EdgeType.MST_EDGE)
+            if(nei.getType() == EdgeType.MST_EDGE) {
                 log.log(Level.INFO,  "\nMST edge : " + nei + "\n");
+            }
             if (nei.getToVertex() != node.getSrcUID() && nei.getType() == EdgeType.MST_EDGE) {
                 sendMessage(node.getUID(), nei.getToVertex(), node.getLeader(), MessageType.TERMINATE, null);
             }
@@ -439,7 +440,7 @@ public class SynchGHS implements Runnable {
     public void sendMessage(int src, int dst, int leader, MessageType messageType, Edge minEdge) {
         String hostName = c.getHostName(dst);
         try {
-            Socket socket = new Socket(hostName, c.getMyPortNumber(hostName));
+            Socket socket = new Socket(hostName, c.getMyPortNumber(dst));
             ObjectOutputStream outputStream = new ObjectOutputStream(socket.getOutputStream());
             GHSMessage ghsM = new GHSMessage(src, dst, leader, messageType, minEdge, node.getRound());
             outputStream.writeObject(ghsM);

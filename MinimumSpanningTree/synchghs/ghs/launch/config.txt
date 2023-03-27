@@ -13,7 +13,7 @@
 200 dc13.utdallas.edu 9111
 8 dc14.utdallas.edu 9213
 184 dc15.utdallas.edu 9789
-9 dc16.utdallas.edu 9999
+9 dc12.utdallas.edu 9999
 37 dc17.utdallas.edu 9888
 78 dc18.utdallas.edu 9286
 # List of edges and their weight, one per line. An edge is denoted

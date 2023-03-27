@@ -9,10 +9,7 @@ import ghs.message.NodeType;
 
 import java.net.InetAddress;
 import java.net.UnknownHostException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
+import java.util.*;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -50,7 +47,8 @@ public class Node {
     /**
      * Constructor
      */
-    public Node() {
+    public Node(String[] args) {
+
         neighbors = new ArrayList<>();
         config = new Config();
         config.readFile();
@@ -65,8 +63,8 @@ public class Node {
         hostName = ip.getHostName();
 
         // node details
-        portNumber = config.getMyPortNumber(hostName);
-        UID = config.getMyUID(hostName);
+        UID = Integer.parseInt(args[0]);
+        portNumber = config.getMyPortNumber(UID);
         neighbors = config.getNeighbors(UID);
 
         //ghs
@@ -84,10 +82,11 @@ public class Node {
         normalEdgeCount = neighbors.size();
         neighborsMinEdge = new HashMap<>();
         ghsMessages = new CopyOnWriteArrayList<>();
+        this.toString();
     }
 
     public static void main(String[] args) throws InterruptedException {
-        Node n = new Node();
+        Node n = new Node(args);
 
         n.handleGHSClient();
         //sleeping for some time to wait for all the nodes to be active by that time.
@@ -251,5 +250,9 @@ public class Node {
     public int getPortNumber() { return portNumber; }
 
     public List<Edge> getNeighbors() { return neighbors; }
+
+    public String toString(){
+        return "UID: " + this.getUID() + "\tHOSTNAME: " + getConfig().getHostName(this.getUID()) + "\tPORT: " + getConfig().getMyPortNumber(this.getUID());
+    }
 
 }

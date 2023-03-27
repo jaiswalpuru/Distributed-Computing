@@ -52,7 +52,7 @@ public class Edge implements Serializable {
     }
 
     public String toString() {
-        return "From Vertex : " + fromVertex + ", to Vertex : " + toVertex + ", wt : " + edgeWt + ", edge type : " +
-                type;
+        return "\n\tEDGE_TYPE: " + getType() + "\n\tFROM_VERTEX : " + fromVertex + "\n\tTO_VERTEX : " +
+                toVertex + "\n\tWEIGHT : " + edgeWt + "\n\n";
     }
 }
