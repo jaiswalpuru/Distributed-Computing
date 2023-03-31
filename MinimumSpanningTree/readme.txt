@@ -4,6 +4,7 @@ Name: Puru Jaiswal &  Utsav Adhikari & Gregory Hinkson
 UTD NETID: PXJ200018 & UXA200002 & GKH210000 
 Assignment: CS6380 Project 2
 
+Link to the demo video : https://cometmail-my.sharepoint.com/:v:/g/personal/pxj200018_utdallas_edu/EanxrXPBpVpJuXRQ_HeoOr8BLOndyDPqFxtL-QfXTHAZqA?e=GxxhCf
 
 Files:
 	1) MinimumSpanningTree/synchghs/ghs/algorithm/SynchGHS.java - the main program which executes SynchGHS algorithm for Minimum Spanning Tree construction 
