@@ -43,7 +43,11 @@ public class SynchGHS implements Runnable {
         while (node.getActive()) {
             if (node.getFirstMessage()) {
                 node.setFirstMessage(false);
-                broadcast();
+                try {
+                    broadcast();
+                } catch (InterruptedException e) {
+                    throw new RuntimeException(e);
+                }
             }
             try {
                 processMessages();
@@ -108,8 +112,10 @@ public class SynchGHS implements Runnable {
 
                 case MERGE:
                     log.log(Level.INFO, "Merge : " + ghsMessage);
-                    if (ghsMessage.getMinEdge() != null)
+                    if (ghsMessage.getMinEdge() != null) {
+                        node.setSrcUID(ghsMessage.getSourceUID());
                         merge(ghsMessage.getMinEdge());
+                    }
                     break;
 
                 case EMPTY:
@@ -166,7 +172,7 @@ public class SynchGHS implements Runnable {
     /**
      * Function to broadcast message to everyone.
      */
-    public void broadcast() {
+    public void broadcast() throws InterruptedException {
         boolean isLeafNode = true;
         List<Edge> neighbors = Collections.synchronizedList(node.getNeighbors());
         for (Edge edge : neighbors) {
@@ -222,7 +228,7 @@ public class SynchGHS implements Runnable {
     /**
      * Converge cast when message is received from all its neighbors, and compute the MWOE
      */
-    public void convergeCast() {
+    public void convergeCast() throws InterruptedException {
         if(node.getFirstConverge()) {
             node.setFirstConverge(false);
             node.setConvergeDone(false);
@@ -351,7 +357,7 @@ public class SynchGHS implements Runnable {
                 node.setType(NodeType.ROOT);
                 log.log(Level.INFO, "Leader update UID : " + node.getUID() + " message leader : " +  msg.getLeaderUID());
                 broadcastLeader();
-                Thread.sleep(2000);
+                Thread.sleep(10000);
                 node.setFirstConverge(true);
                 node.setConvergeDone(false);
                 node.setRound(node.getRound()+1);
@@ -379,7 +385,7 @@ public class SynchGHS implements Runnable {
      * Update source min edge from two hashmaps, neighborsMinEdge and srcMinEdge
      * @param currMinEdge the edge which needs to be merged
      */
-    public void merge(Edge currMinEdge) {
+    public void merge(Edge currMinEdge) throws InterruptedException {
         log.log(Level.INFO, "CurrMinEdge : " + currMinEdge);
         if (currMinEdge.getFromVertex() == node.getUID()) {
             //merge
@@ -399,8 +405,24 @@ public class SynchGHS implements Runnable {
 
             //start merge with min edge
             if (minEdge != null) {
-                node.updateMyGraph(minEdge.getToVertex(), EdgeType.MST_EDGE);
-                sendMessage(minEdge.getFromVertex(), minEdge.getToVertex(), node.getLeader(), MessageType.START_MERGE, null);
+                if (minEdge.getType().equals(EdgeType.MST_EDGE)) {
+                    node.setSrcUID(-1);
+                    node.setLeader(node.getUID());
+                    node.setType(NodeType.ROOT);
+                    log.log(Level.INFO, "Leader update UID : " + node.getUID());
+                    broadcastLeader();
+                    Thread.sleep(10000);
+                    node.setFirstConverge(true);
+                    node.setConvergeDone(false);
+                    node.setRound(node.getRound()+1);
+                    node.neighborLeader.clear();
+                    node.neighborsMinEdge.clear();
+                    node.neighborRepliedRound.clear();
+                    broadcast();
+                } else{
+                    node.updateMyGraph(minEdge.getToVertex(), EdgeType.MST_EDGE);
+                    sendMessage(minEdge.getFromVertex(), minEdge.getToVertex(), node.getLeader(), MessageType.START_MERGE, null);
+                }
             }
         } else {
             // forward to mst edges
@@ -417,7 +439,7 @@ public class SynchGHS implements Runnable {
      * To send message on the normal edges.
      * Where Normal edge is a message type.
      */
-    public void sendMessageOnNormalEdge(){
+    public void sendMessageOnNormalEdge() throws InterruptedException {
         List<Edge> neighbors = node.getNeighbors();
         boolean isNormalEdge = false;
         for(Edge e: neighbors){
